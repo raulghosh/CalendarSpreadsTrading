@@ -1,0 +1,89 @@
+# Scheduled macro events, maintained by hand. Dates are America/New_York.
+# Source: federalreserve.gov/monetarypolicy/fomccalendars.htm, bls.gov/schedule (fetched 2026-09-13).
+# Re-verify and extend each January — the Fed and BLS publish next year's calendars in the fall.
+
+fomc:
+  - {date: "2026-01-28", label: "FOMC decision (SEP)"}
+  - {date: "2026-03-18", label: "FOMC decision (SEP)"}
+  - {date: "2026-04-29", label: "FOMC decision"}
+  - {date: "2026-06-17", label: "FOMC decision (SEP)"}
+  - {date: "2026-07-29", label: "FOMC decision"}
+  - {date: "2026-09-16", label: "FOMC decision (SEP)"}
+  - {date: "2026-10-28", label: "FOMC decision"}
+  - {date: "2026-12-09", label: "FOMC decision (SEP)"}
+
+cpi:
+  - {date: "2026-01-13"}
+  - {date: "2026-02-13"}
+  - {date: "2026-03-11"}
+  - {date: "2026-04-10"}
+  - {date: "2026-05-12"}
+  - {date: "2026-06-10"}
+  - {date: "2026-07-14"}
+  - {date: "2026-08-12"}
+  - {date: "2026-09-11"}
+  - {date: "2026-10-14"}
+  - {date: "2026-11-10"}
+  - {date: "2026-12-10"}
+
+nfp:
+  - {date: "2026-01-09"}
+  - {date: "2026-02-11"}
+  - {date: "2026-03-06"}
+  - {date: "2026-04-03"}
+  - {date: "2026-05-08"}
+  - {date: "2026-06-05"}
+  - {date: "2026-07-02"}
+  - {date: "2026-08-07"}
+  - {date: "2026-09-04"}
+  - {date: "2026-10-02"}
+  - {date: "2026-11-06"}
+  - {date: "2026-12-04"}
+
+# PCE (personal consumption expenditures, the Fed's preferred inflation gauge) — fill in from
+# bea.gov release schedule; typically last business day of the month, ~4 weeks after month-end.
+pce: []
+
+# Quarterly options expiration / "quad witching" — 3rd Friday of Mar/Jun/Sep/Dec.
+quad_witching:
+  - {date: "2026-03-20"}
+  - {date: "2026-06-19"}
+  - {date: "2026-09-18"}
+  - {date: "2026-12-18"}
+
+# Monthly options expiration — 3rd Friday of every month (superset of quad_witching).
+monthly_opex:
+  - {date: "2026-01-16"}
+  - {date: "2026-02-20"}
+  - {date: "2026-03-20"}
+  - {date: "2026-04-17"}
+  - {date: "2026-05-15"}
+  - {date: "2026-06-19"}
+  - {date: "2026-07-17"}
+  - {date: "2026-08-21"}
+  - {date: "2026-09-18"}
+  - {date: "2026-10-16"}
+  - {date: "2026-11-20"}
+  - {date: "2026-12-18"}
+
+# Treasury quarterly refunding announcements — fill in from treasurydirect.gov / fiscal quarterly
+# refunding press conferences (typically early Feb/May/Aug/Nov).
+treasury_refunding: []
+
+# NYSE market holidays (source: ice.com NYSE Group 2026 holiday calendar, full closure).
+market_holidays:
+  - {date: "2026-01-01", label: "New Year's Day"}
+  - {date: "2026-01-19", label: "Martin Luther King Jr. Day"}
+  - {date: "2026-02-16", label: "Washington's Birthday"}
+  - {date: "2026-04-03", label: "Good Friday"}
+  - {date: "2026-05-25", label: "Memorial Day"}
+  - {date: "2026-06-19", label: "Juneteenth"}
+  - {date: "2026-07-03", label: "Independence Day (observed, actual date Jul 4 falls on Saturday)"}
+  - {date: "2026-09-07", label: "Labor Day"}
+  - {date: "2026-11-26", label: "Thanksgiving"}
+  - {date: "2026-12-25", label: "Christmas"}
+
+# Early closes at 1:00pm ET.
+early_closes:
+  - {date: "2026-11-27", label: "Day after Thanksgiving"}
+  - {date: "2026-12-24", label: "Christmas Eve"}
