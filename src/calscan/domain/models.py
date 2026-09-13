@@ -31,7 +31,7 @@ class OptionContract:
     gamma: float | None
     theta: float | None
     vega: float | None
-    open_interest: int
+    open_interest: int | None  # Alpaca's data-only snapshot omits OI — see adapters/alpaca.py
     underlying_price: float
 
     @property

@@ -5,17 +5,26 @@ to touch the DB and the clock.
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 from datetime import date, timedelta
+from pathlib import Path
 
 import pandas as pd
+from alpaca.data.models.snapshots import OptionsSnapshot
 from sqlalchemy.orm import Session
 
+from calscan.adapters import alpaca as alpaca_adapter
+from calscan.adapters import schwab as schwab_adapter
 from calscan.domain import realized, regime, termstructure
+from calscan.domain.models import Chain
+from calscan.domain.scanner import Candidate, build_candidates, rank_candidates
 from calscan.events import EventsCalendar, load_events
-from calscan.settings import AppConfig
+from calscan.settings import AppConfig, Settings
 from calscan.store import repo
+
+FIXTURES_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,3 +116,63 @@ def load_market_snapshot(
         vix_family_df=vix_df,
         spy_df=spy_df,
     )
+
+
+def load_fixture_chain(product: str) -> Chain | None:
+    """Bundled tests/fixtures/ chain JSON — lets the Scanner/Scenario Grid pages work with no
+    live credentials configured (also exercised by the domain test suite)."""
+    if product in ("SPX", "XSP"):
+        path = FIXTURES_DIR / f"schwab_{product.lower()}_chain.json"
+        if not path.exists():
+            return None
+        raw = json.loads(path.read_text())
+        return schwab_adapter.parse_chain(raw, product=product)
+    if product == "SPY":
+        path = FIXTURES_DIR / "alpaca_spy_chain.json"
+        if not path.exists():
+            return None
+        raw = json.loads(path.read_text())
+        snapshots = {s: OptionsSnapshot(s, d) for s, d in raw["snapshots"].items()}
+        return alpaca_adapter.parse_chain(
+            snapshots, product="SPY", underlying_price=raw["underlying_price"], as_of=date.today()
+        )
+    return None
+
+
+def load_live_chain(settings: Settings, cfg: AppConfig, product: str) -> Chain:
+    """Raises on adapter/auth failure — callers decide how to surface that in the UI."""
+    pcfg = cfg.products[product]
+    if pcfg.source == "schwab":
+        client = schwab_adapter.get_client(settings.secrets)
+        return schwab_adapter.get_chain(client, product, pcfg.symbol)
+    stock_client = alpaca_adapter.get_client(settings.secrets)
+    quote = alpaca_adapter.get_quote(stock_client, pcfg.symbol)
+    option_client = alpaca_adapter.get_option_client(settings.secrets)
+    return alpaca_adapter.get_chain(option_client, pcfg.symbol, product, quote.price)
+
+
+def build_ranked_candidates(
+    chain: Chain, product: str, cfg: AppConfig, snapshot: MarketSnapshot | None
+) -> list[Candidate]:
+    """Same candidate build + rank used by both the Scanner and Scenario Grid pages."""
+    pcfg = cfg.products[product]
+    playbook = snapshot.regime.playbook if snapshot else "A"
+    candidates = build_candidates(
+        product=product,
+        contracts=chain.contracts,
+        expiries=chain.expiries,
+        spot=chain.underlying_price,
+        multiplier=pcfg.multiplier,
+        style=pcfg.style,
+        r=cfg.rates.risk_free,
+        q=cfg.rates.dividend_yield,
+        expiry_cfg=cfg.expiry_selection,
+        strikes_cfg=cfg.strikes,
+        gates_cfg=cfg.gates,
+        wvega_alphas=[cfg.vol_shock_alpha.baseline, *cfg.vol_shock_alpha.stress_cases],
+        stress_alpha=max(cfg.vol_shock_alpha.stress_cases),
+        rv10=snapshot.rv10 if snapshot else float("nan"),
+        nav=cfg.nav,
+        slope_z_favourable=playbook == "A",
+    )
+    return rank_candidates(candidates, playbook, snapshot.slope_z if snapshot else 0.0)

@@ -1,0 +1,853 @@
+{
+  "symbol": "$SPX",
+  "status": "SUCCESS",
+  "underlyingPrice": 6000.0,
+  "callExpDateMap": {
+    "2026-10-09:30": {
+      "5700.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C05700000",
+          "bid": 326.08,
+          "ask": 328.7,
+          "volatility": 15.32,
+          "delta": 0.8926,
+          "gamma": 0.000696,
+          "theta": -1.2073,
+          "vega": 315.4924,
+          "openInterest": 1500,
+          "strikePrice": 5700,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5800.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C05800000",
+          "bid": 240.5,
+          "ask": 242.43,
+          "volatility": 14.86,
+          "delta": 0.8083,
+          "gamma": 0.001063,
+          "theta": -1.5286,
+          "vega": 467.6055,
+          "openInterest": 1500,
+          "strikePrice": 5800,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5850.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C05850000",
+          "bid": 201.22,
+          "ask": 202.84,
+          "volatility": 14.64,
+          "delta": 0.7518,
+          "gamma": 0.001253,
+          "theta": -1.672,
+          "vega": 542.9547,
+          "openInterest": 1500,
+          "strikePrice": 5850,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5900.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C05900000",
+          "bid": 164.92,
+          "ask": 166.24,
+          "volatility": 14.42,
+          "delta": 0.686,
+          "gamma": 0.001427,
+          "theta": -1.7827,
+          "vega": 608.9313,
+          "openInterest": 1500,
+          "strikePrice": 5900,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5950.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C05950000",
+          "bid": 132.05,
+          "ask": 133.11,
+          "volatility": 14.21,
+          "delta": 0.612,
+          "gamma": 0.001565,
+          "theta": -1.8445,
+          "vega": 657.979,
+          "openInterest": 1500,
+          "strikePrice": 5950,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6000.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C06000000",
+          "bid": 102.99,
+          "ask": 103.82,
+          "volatility": 14.0,
+          "delta": 0.5319,
+          "gamma": 0.001649,
+          "theta": -1.8443,
+          "vega": 683.2333,
+          "openInterest": 1500,
+          "strikePrice": 6000,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6050.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C06050000",
+          "bid": 78.01,
+          "ask": 78.64,
+          "volatility": 13.79,
+          "delta": 0.4487,
+          "gamma": 0.001666,
+          "theta": -1.7752,
+          "vega": 679.9369,
+          "openInterest": 1500,
+          "strikePrice": 6050,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6100.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C06100000",
+          "bid": 57.19,
+          "ask": 57.65,
+          "volatility": 13.59,
+          "delta": 0.366,
+          "gamma": 0.001608,
+          "theta": -1.6386,
+          "vega": 646.6863,
+          "openInterest": 1500,
+          "strikePrice": 6100,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6150.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C06150000",
+          "bid": 40.44,
+          "ask": 40.77,
+          "volatility": 13.39,
+          "delta": 0.2875,
+          "gamma": 0.001479,
+          "theta": -1.4452,
+          "vega": 586.1106,
+          "openInterest": 1500,
+          "strikePrice": 6150,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6200.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C06200000",
+          "bid": 27.49,
+          "ask": 27.71,
+          "volatility": 13.2,
+          "delta": 0.2167,
+          "gamma": 0.001292,
+          "theta": -1.2136,
+          "vega": 504.6765,
+          "openInterest": 1500,
+          "strikePrice": 6200,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6300.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261009C06300000",
+          "bid": 11.1,
+          "ask": 11.19,
+          "volatility": 12.82,
+          "delta": 0.1069,
+          "gamma": 0.000835,
+          "theta": -0.7282,
+          "vega": 316.8245,
+          "openInterest": 1500,
+          "strikePrice": 6300,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ]
+    },
+    "2026-11-13:65": {
+      "5700.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C05700000",
+          "bid": 377.92,
+          "ask": 380.95,
+          "volatility": 16.82,
+          "delta": 0.7958,
+          "gamma": 0.00066,
+          "theta": -1.2693,
+          "vega": 712.1548,
+          "openInterest": 1500,
+          "strikePrice": 5700,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5800.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C05800000",
+          "bid": 301.11,
+          "ask": 303.53,
+          "volatility": 16.36,
+          "delta": 0.725,
+          "gamma": 0.000801,
+          "theta": -1.3798,
+          "vega": 840.3545,
+          "openInterest": 1500,
+          "strikePrice": 5800,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5850.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C05850000",
+          "bid": 265.45,
+          "ask": 267.59,
+          "volatility": 16.14,
+          "delta": 0.6843,
+          "gamma": 0.000866,
+          "theta": -1.4191,
+          "vega": 896.3296,
+          "openInterest": 1500,
+          "strikePrice": 5850,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5900.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C05900000",
+          "bid": 231.87,
+          "ask": 233.73,
+          "volatility": 15.92,
+          "delta": 0.6403,
+          "gamma": 0.000924,
+          "theta": -1.444,
+          "vega": 943.454,
+          "openInterest": 1500,
+          "strikePrice": 5900,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5950.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C05950000",
+          "bid": 200.52,
+          "ask": 202.13,
+          "volatility": 15.71,
+          "delta": 0.5934,
+          "gamma": 0.000972,
+          "theta": -1.4523,
+          "vega": 979.1811,
+          "openInterest": 1500,
+          "strikePrice": 5950,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6000.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C06000000",
+          "bid": 171.54,
+          "ask": 172.92,
+          "volatility": 15.5,
+          "delta": 0.5443,
+          "gamma": 0.001008,
+          "theta": -1.4419,
+          "vega": 1001.21,
+          "openInterest": 1500,
+          "strikePrice": 6000,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6050.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C06050000",
+          "bid": 145.04,
+          "ask": 146.21,
+          "volatility": 15.29,
+          "delta": 0.4935,
+          "gamma": 0.001028,
+          "theta": -1.4117,
+          "vega": 1007.6886,
+          "openInterest": 1500,
+          "strikePrice": 6050,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6100.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C06100000",
+          "bid": 121.11,
+          "ask": 122.08,
+          "volatility": 15.09,
+          "delta": 0.4418,
+          "gamma": 0.001031,
+          "theta": -1.3614,
+          "vega": 997.4117,
+          "openInterest": 1500,
+          "strikePrice": 6100,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6150.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C06150000",
+          "bid": 99.76,
+          "ask": 100.56,
+          "volatility": 14.89,
+          "delta": 0.3902,
+          "gamma": 0.001016,
+          "theta": -1.2918,
+          "vega": 969.9871,
+          "openInterest": 1500,
+          "strikePrice": 6150,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6200.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C06200000",
+          "bid": 80.99,
+          "ask": 81.64,
+          "volatility": 14.7,
+          "delta": 0.3395,
+          "gamma": 0.000983,
+          "theta": -1.2046,
+          "vega": 925.9459,
+          "openInterest": 1500,
+          "strikePrice": 6200,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6300.0": [
+        {
+          "putCall": "CALL",
+          "symbol": "SPX   20261113C06300000",
+          "bid": 50.89,
+          "ask": 51.3,
+          "volatility": 14.32,
+          "delta": 0.2449,
+          "gamma": 0.000866,
+          "theta": -0.9901,
+          "vega": 794.8595,
+          "openInterest": 1500,
+          "strikePrice": 6300,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ]
+    }
+  },
+  "putExpDateMap": {
+    "2026-10-09:30": {
+      "5700.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P05700000",
+          "bid": 13.63,
+          "ask": 13.74,
+          "volatility": 15.32,
+          "delta": -0.1063,
+          "gamma": 0.000696,
+          "theta": -0.7516,
+          "vega": 315.4924,
+          "openInterest": 1500,
+          "strikePrice": 5700,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5800.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P05800000",
+          "bid": 27.3,
+          "ask": 27.52,
+          "volatility": 14.86,
+          "delta": -0.1907,
+          "gamma": 0.001063,
+          "theta": -1.0612,
+          "vega": 467.6055,
+          "openInterest": 1500,
+          "strikePrice": 5800,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5850.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P05850000",
+          "bid": 37.64,
+          "ask": 37.95,
+          "volatility": 14.64,
+          "delta": -0.2471,
+          "gamma": 0.001253,
+          "theta": -1.1987,
+          "vega": 542.9547,
+          "openInterest": 1500,
+          "strikePrice": 5850,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5900.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P05900000",
+          "bid": 50.97,
+          "ask": 51.38,
+          "volatility": 14.42,
+          "delta": -0.3129,
+          "gamma": 0.001427,
+          "theta": -1.3036,
+          "vega": 608.9313,
+          "openInterest": 1500,
+          "strikePrice": 5900,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5950.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P05950000",
+          "bid": 67.72,
+          "ask": 68.27,
+          "volatility": 14.21,
+          "delta": -0.3869,
+          "gamma": 0.001565,
+          "theta": -1.3595,
+          "vega": 657.979,
+          "openInterest": 1500,
+          "strikePrice": 5950,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6000.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P06000000",
+          "bid": 88.29,
+          "ask": 89.0,
+          "volatility": 14.0,
+          "delta": -0.467,
+          "gamma": 0.001649,
+          "theta": -1.3535,
+          "vega": 683.2333,
+          "openInterest": 1500,
+          "strikePrice": 6000,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6050.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P06050000",
+          "bid": 112.93,
+          "ask": 113.84,
+          "volatility": 13.79,
+          "delta": -0.5502,
+          "gamma": 0.001666,
+          "theta": -1.2784,
+          "vega": 679.9369,
+          "openInterest": 1500,
+          "strikePrice": 6050,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6100.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P06100000",
+          "bid": 141.74,
+          "ask": 142.88,
+          "volatility": 13.59,
+          "delta": -0.6329,
+          "gamma": 0.001608,
+          "theta": -1.1359,
+          "vega": 646.6863,
+          "openInterest": 1500,
+          "strikePrice": 6100,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6150.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P06150000",
+          "bid": 174.61,
+          "ask": 176.02,
+          "volatility": 13.39,
+          "delta": -0.7114,
+          "gamma": 0.001479,
+          "theta": -0.9367,
+          "vega": 586.1106,
+          "openInterest": 1500,
+          "strikePrice": 6150,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6200.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P06200000",
+          "bid": 211.28,
+          "ask": 212.98,
+          "volatility": 13.2,
+          "delta": -0.7822,
+          "gamma": 0.001292,
+          "theta": -0.6992,
+          "vega": 504.6765,
+          "openInterest": 1500,
+          "strikePrice": 6200,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6300.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261009P06300000",
+          "bid": 294.14,
+          "ask": 296.51,
+          "volatility": 12.82,
+          "delta": -0.892,
+          "gamma": 0.000835,
+          "theta": -0.202,
+          "vega": 316.8245,
+          "openInterest": 1500,
+          "strikePrice": 6300,
+          "expirationDate": "2026-10-09T00:00:00.000+00:00",
+          "daysToExpiration": 30,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ]
+    },
+    "2026-11-13:65": {
+      "5700.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P05700000",
+          "bid": 49.63,
+          "ask": 50.03,
+          "volatility": 16.82,
+          "delta": -0.2019,
+          "gamma": 0.00066,
+          "theta": -0.8161,
+          "vega": 712.1548,
+          "openInterest": 1500,
+          "strikePrice": 5700,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5800.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P05800000",
+          "bid": 71.66,
+          "ask": 72.23,
+          "volatility": 16.36,
+          "delta": -0.2727,
+          "gamma": 0.000801,
+          "theta": -0.9149,
+          "vega": 840.3545,
+          "openInterest": 1500,
+          "strikePrice": 5800,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5850.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P05850000",
+          "bid": 85.43,
+          "ask": 86.11,
+          "volatility": 16.14,
+          "delta": -0.3134,
+          "gamma": 0.000866,
+          "theta": -0.9483,
+          "vega": 896.3296,
+          "openInterest": 1500,
+          "strikePrice": 5850,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5900.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P05900000",
+          "bid": 101.26,
+          "ask": 102.08,
+          "volatility": 15.92,
+          "delta": -0.3574,
+          "gamma": 0.000924,
+          "theta": -0.9675,
+          "vega": 943.454,
+          "openInterest": 1500,
+          "strikePrice": 5900,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "5950.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P05950000",
+          "bid": 119.33,
+          "ask": 120.29,
+          "volatility": 15.71,
+          "delta": -0.4042,
+          "gamma": 0.000972,
+          "theta": -0.9699,
+          "vega": 979.1811,
+          "openInterest": 1500,
+          "strikePrice": 5950,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6000.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P06000000",
+          "bid": 139.77,
+          "ask": 140.89,
+          "volatility": 15.5,
+          "delta": -0.4534,
+          "gamma": 0.001008,
+          "theta": -0.9536,
+          "vega": 1001.21,
+          "openInterest": 1500,
+          "strikePrice": 6000,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6050.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P06050000",
+          "bid": 162.7,
+          "ask": 164.0,
+          "volatility": 15.29,
+          "delta": -0.5042,
+          "gamma": 0.001028,
+          "theta": -0.9176,
+          "vega": 1007.6886,
+          "openInterest": 1500,
+          "strikePrice": 6050,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6100.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P06100000",
+          "bid": 188.18,
+          "ask": 189.69,
+          "volatility": 15.09,
+          "delta": -0.5559,
+          "gamma": 0.001031,
+          "theta": -0.8614,
+          "vega": 997.4117,
+          "openInterest": 1500,
+          "strikePrice": 6100,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6150.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P06150000",
+          "bid": 216.25,
+          "ask": 217.99,
+          "volatility": 14.89,
+          "delta": -0.6075,
+          "gamma": 0.001016,
+          "theta": -0.786,
+          "vega": 969.9871,
+          "openInterest": 1500,
+          "strikePrice": 6150,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6200.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P06200000",
+          "bid": 246.9,
+          "ask": 248.89,
+          "volatility": 14.7,
+          "delta": -0.6581,
+          "gamma": 0.000983,
+          "theta": -0.693,
+          "vega": 925.9459,
+          "openInterest": 1500,
+          "strikePrice": 6200,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ],
+      "6300.0": [
+        {
+          "putCall": "PUT",
+          "symbol": "SPX   20261113P06300000",
+          "bid": 315.65,
+          "ask": 318.18,
+          "volatility": 14.32,
+          "delta": -0.7528,
+          "gamma": 0.000866,
+          "theta": -0.4667,
+          "vega": 794.8595,
+          "openInterest": 1500,
+          "strikePrice": 6300,
+          "expirationDate": "2026-11-13T00:00:00.000+00:00",
+          "daysToExpiration": 65,
+          "optionRoot": "SPXW",
+          "multiplier": 100.0
+        }
+      ]
+    }
+  }
+}
