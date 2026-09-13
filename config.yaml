@@ -42,6 +42,14 @@ targets:
   playbook_A: {profit_pct: 0.25, stop_pct: -0.35, distance_stop_sigma: 1.25, time_stop_dte: 10}
   playbook_B: {profit_pct: 0.50, stop_pct: -0.35, distance_stop_sigma: 1.25, time_stop_dte: 10}
 
+exit_tree:
+  # §5.9 step 6 (|net_delta| > delta_band -> HEDGE) isn't given a value in the build plan's
+  # config block — not derivable from anything else, so added here rather than hardcoded.
+  # Units match net_delta: (back_delta - front_delta) * multiplier * contracts; multiplier is
+  # 100 for all three products, so this is roughly "shares of directional exposure per contract"
+  # and comparable across SPX/XSP/SPY. Revisit once real position sizes are in.
+  delta_band: 10
+
 scenario_grid:
   spot_moves_sigma: [-2, -1, -0.5, 0, 0.5, 1, 2]
   iv_shifts_front: [-4, 0, 4, 10]

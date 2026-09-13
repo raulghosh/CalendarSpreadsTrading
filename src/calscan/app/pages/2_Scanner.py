@@ -7,6 +7,7 @@ from calscan.app.data import (
     load_fixture_chain,
     load_live_chain,
     load_market_snapshot,
+    open_position_from_candidate,
 )
 from calscan.domain.scanner import spread_width_pct
 from calscan.settings import Settings
@@ -86,3 +87,32 @@ for product, tab in zip(cfg.products.keys(), tabs, strict=True):
             for c in ranked
         ]
         st.dataframe(rows, use_container_width=True, hide_index=True)
+
+        st.subheader("Add to positions")
+        st.caption("Records it as opened — no order is sent.")
+        labels = [
+            f"{c.side} {c.strike:g}  {c.front.expiry}/{c.back.expiry}  "
+            f"({'tradeable' if c.tradeable else 'gated'}, score {c.soft_score})"
+            for c in ranked
+        ]
+        def _label(i: int, labels: list[str] = labels) -> str:
+            return labels[i]
+
+        with st.form(key=f"add_position_{product}"):
+            choice = st.selectbox("Candidate", options=list(range(len(ranked))), format_func=_label)
+            contracts = st.number_input("Contracts", min_value=1, value=1, step=1)
+            thesis = st.text_input("Thesis (optional)")
+            submitted = st.form_submit_button("Add to positions")
+        if submitted and choice is not None:
+            playbook = snapshot.regime.playbook if snapshot else "A"
+            with session_factory() as session:  # type: ignore[operator]
+                position_id = open_position_from_candidate(
+                    session,
+                    ranked[choice],
+                    product,
+                    chain.underlying_price,
+                    playbook,
+                    contracts,
+                    thesis,
+                )
+            st.success(f"Opened position #{position_id}.")

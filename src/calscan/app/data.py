@@ -8,8 +8,9 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from alpaca.data.models.snapshots import OptionsSnapshot
@@ -20,6 +21,7 @@ from calscan.adapters import schwab as schwab_adapter
 from calscan.domain import realized, regime, termstructure
 from calscan.domain.models import Chain
 from calscan.domain.scanner import Candidate, build_candidates, rank_candidates
+from calscan.domain.sigma import sigma_pts
 from calscan.events import EventsCalendar, load_events
 from calscan.settings import AppConfig, Settings
 from calscan.store import repo
@@ -176,3 +178,38 @@ def build_ranked_candidates(
         slope_z_favourable=playbook == "A",
     )
     return rank_candidates(candidates, playbook, snapshot.slope_z if snapshot else 0.0)
+
+
+def open_position_from_candidate(
+    session: Session,
+    candidate: Candidate,
+    product: str,
+    spot: float,
+    playbook: str,
+    contracts: int,
+    thesis: str,
+) -> int:
+    """Records a candidate as opened — no order is sent (build plan §6, Scanner page)."""
+    sigma_entry_pts = sigma_pts(spot, candidate.front.iv, candidate.front.dte)  # type: ignore[arg-type]
+    fields: dict[str, Any] = {
+        "product": product,
+        "side": candidate.side,
+        "strike": candidate.strike,
+        "front_expiry": candidate.front.expiry,
+        "back_expiry": candidate.back.expiry,
+        "contracts": contracts,
+        "debit_paid": candidate.debit_mid,
+        "iv1_entry": candidate.front.iv,
+        "iv2_entry": candidate.back.iv,
+        "sigma_entry_pts": sigma_entry_pts,
+        "playbook": playbook,
+        "thesis": thesis or None,
+    }
+    position_id = repo.insert_position(session, fields)
+    payload = {**fields, "spot_at_entry": spot}
+    payload["front_expiry"] = candidate.front.expiry.isoformat()
+    payload["back_expiry"] = candidate.back.expiry.isoformat()
+    repo.insert_journal_entry(
+        session, ts=datetime.utcnow(), event_type="opened", position_id=position_id, payload=payload
+    )
+    return position_id

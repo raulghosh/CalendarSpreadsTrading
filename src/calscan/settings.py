@@ -77,6 +77,10 @@ class TargetsConfig(BaseModel):
     playbook_B: PlaybookTargets
 
 
+class ExitTreeConfig(BaseModel):
+    delta_band: float
+
+
 class ScenarioGridConfig(BaseModel):
     spot_moves_sigma: list[float]
     iv_shifts_front: list[float]
@@ -101,6 +105,7 @@ class AppConfig(BaseModel):
     vol_shock_alpha: VolShockAlphaConfig
     gates: GatesConfig
     targets: TargetsConfig
+    exit_tree: ExitTreeConfig
     scenario_grid: ScenarioGridConfig
     schedule: ScheduleConfig
     nav: float
