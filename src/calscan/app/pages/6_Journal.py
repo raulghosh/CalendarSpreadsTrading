@@ -28,7 +28,11 @@ with st.form(key="add_note"):
     position_id_raw = st.text_input("Position ID (optional)")
     note = st.text_area("Note")
     if st.form_submit_button("Add note") and note:
-        position_id = int(position_id_raw) if position_id_raw.strip() else None
+        raw_id = position_id_raw.strip()
+        if raw_id and not raw_id.isdigit():
+            st.error("Position ID must be a whole number.")
+            st.stop()
+        position_id = int(raw_id) if raw_id else None
         with session_factory() as session:  # type: ignore[operator]
             repo.insert_journal_entry(
                 session,

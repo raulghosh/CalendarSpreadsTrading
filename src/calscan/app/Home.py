@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import streamlit as st
 
 from calscan.app.data import load_market_snapshot
@@ -34,14 +32,13 @@ with col1:
         st.write(f"VIX-family (CBOE): **{snapshot.as_of}**")
         spy_last = snapshot.spy_df.index[-1].date() if not snapshot.spy_df.empty else "—"
         st.write(f"SPY daily bars (Alpaca): **{spy_last}**")
-        st.write("SPX/XSP/SPY chains (Schwab/Alpaca): _pending Phase 2_")
+        if snapshot.spy_df.empty:
+            st.warning("No SPY history — RV10 is unknown, so the scanner's RV10 gate fails closed.")
+        st.write("Option chains are fetched live per page (or from bundled fixtures in demo mode).")
 
 with col2:
     st.subheader("Auth status")
-    token_path = Path(settings.secrets.schwab_token_path)
-    if not token_path.is_absolute():
-        token_path = Path.cwd() / token_path
-    if token_path.exists():
+    if settings.secrets.schwab_token_file.exists():
         st.success("Schwab: token file present")
     else:
         st.error("Schwab: not authenticated — run the OAuth flow to create a token file")
@@ -58,9 +55,7 @@ with col3:
         st.write(f"**{snapshot.regime.regime}** → playbook {snapshot.regime.playbook}")
         if snapshot.regime.note:
             st.caption(snapshot.regime.note)
-        st.caption(
-            "VIX-based market read; per-product regime (SPX/XSP/SPY) lands with Phase 2 chains."
-        )
+        st.caption("VIX-family read (CBOE); one regime applies to SPX/XSP/SPY alike.")
 
 st.divider()
 st.page_link("pages/1_Regime.py", label="Regime →")

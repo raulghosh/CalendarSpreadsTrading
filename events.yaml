@@ -51,6 +51,15 @@ quad_witching:
   - {date: "2026-09-18"}
   - {date: "2026-12-18"}
 
+# SPY ex-dividend dates — SPY goes ex-div on the quarterly (Mar/Jun/Sep/Dec) OpEx Friday.
+# [VERIFY] each quarter against the SPDR distribution schedule before relying on the
+# assignment-risk gate (§5.7); an early-assignment window is only as good as this list.
+spy_ex_dividend:
+  - {date: "2026-03-20"}
+  - {date: "2026-06-19"}
+  - {date: "2026-09-18"}
+  - {date: "2026-12-18"}
+
 # Monthly options expiration — 3rd Friday of every month (superset of quad_witching).
 monthly_opex:
   - {date: "2026-01-16"}

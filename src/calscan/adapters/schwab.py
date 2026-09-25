@@ -8,7 +8,8 @@ and whether `volatility` in the chain payload is a percent (14.2) or a decimal (
 from __future__ import annotations
 
 import calendar
-from datetime import UTC, date, datetime
+import math
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from schwab.auth import easy_client
@@ -23,8 +24,19 @@ def get_client(secrets: Secrets) -> Client:
         api_key=secrets.schwab_app_key,
         app_secret=secrets.schwab_app_secret,
         callback_url=secrets.schwab_callback_url,
-        token_path=secrets.schwab_token_path,
+        token_path=str(secrets.schwab_token_file),
     )
+
+
+def _num(value: Any) -> float | None:
+    """Schwab/TDA emits "NaN" strings (and nulls) for greeks/IV on illiquid contracts."""
+    if value is None:
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    return f if math.isfinite(f) else None
 
 
 def get_quote(client: Client, symbol: str) -> Quote:
@@ -55,13 +67,19 @@ def _is_am_settled(expiry: date, option_root: str) -> bool:
 def parse_chain(raw: dict[str, Any], product: str) -> Chain:
     """Translates a raw Schwab/TDA-format chain response into domain models.
 
+    On a 3rd-Friday SPX date the AM-settled monthly (root "SPX") and the PM-settled weekly
+    (root "SPXW") share one expiry key. We keep the PM contract whenever both exist at the
+    same (expiry, strike, side), and flag the expiry AM-settled only if it has no PM contracts
+    at all — so a mixed expiry is still usable as a PM front leg via its SPXW contracts.
+
     [VERIFY] on first live run: exact field names below, and whether `volatility` is a
     percent (14.2, assumed here) or a decimal (0.142) — this is the classic TDA chain shape
     that Schwab's Trader API inherited, not yet confirmed against a live response.
     """
     underlying_price = float(raw["underlyingPrice"])
-    contracts: list[OptionContract] = []
-    expiries: dict[date, Expiry] = {}
+    by_key: dict[tuple[date, float, str], tuple[bool, OptionContract]] = {}
+    expiry_has_pm: dict[date, bool] = {}
+    expiry_dte: dict[date, int] = {}
 
     for side, exp_map_key in (("call", "callExpDateMap"), ("put", "putExpDateMap")):
         side_typed: Side = side  # type: ignore[assignment]
@@ -71,46 +89,55 @@ def parse_chain(raw: dict[str, Any], product: str) -> Chain:
                 for c in contracts_at_strike:
                     dte = int(c["daysToExpiration"])
                     option_root = c.get("optionRoot", product.lstrip("$"))
-                    expiries.setdefault(
-                        expiry_date,
-                        Expiry(
-                            date=expiry_date,
-                            dte=dte,
-                            am_settled=_is_am_settled(expiry_date, option_root),
-                        ),
-                    )
-                    volatility = c.get("volatility")
-                    iv = volatility / 100 if volatility is not None and volatility > 0 else None
-                    contracts.append(
-                        OptionContract(
-                            symbol=c["symbol"],
-                            underlying_symbol=product,
-                            strike=float(c["strikePrice"]),
-                            side=side_typed,
-                            expiry=expiry_date,
-                            dte=dte,
-                            bid=c["bid"],
-                            ask=c["ask"],
-                            iv=iv,
-                            delta=c.get("delta"),
-                            gamma=c.get("gamma"),
-                            theta=c.get("theta"),
-                            vega=c.get("vega"),
-                            open_interest=c.get("openInterest"),
-                            underlying_price=underlying_price,
-                        )
-                    )
+                    am = _is_am_settled(expiry_date, option_root)
+                    expiry_dte.setdefault(expiry_date, dte)
+                    expiry_has_pm[expiry_date] = expiry_has_pm.get(expiry_date, False) or not am
 
+                    volatility = _num(c.get("volatility"))
+                    iv = volatility / 100 if volatility is not None and volatility > 0 else None
+                    contract = OptionContract(
+                        symbol=c["symbol"],
+                        underlying_symbol=product,
+                        strike=float(c["strikePrice"]),
+                        side=side_typed,
+                        expiry=expiry_date,
+                        dte=dte,
+                        bid=_num(c.get("bid")) or 0.0,
+                        ask=_num(c.get("ask")) or 0.0,
+                        iv=iv,
+                        delta=_num(c.get("delta")),
+                        gamma=_num(c.get("gamma")),
+                        theta=_num(c.get("theta")),
+                        vega=_num(c.get("vega")),
+                        open_interest=(
+                            int(oi) if (oi := _num(c.get("openInterest"))) is not None else None
+                        ),
+                        underlying_price=underlying_price,
+                    )
+                    key = (expiry_date, contract.strike, side)
+                    existing = by_key.get(key)
+                    if existing is None or (existing[0] and not am):  # PM replaces AM
+                        by_key[key] = (am, contract)
+
+    expiries = tuple(
+        Expiry(date=d, dte=expiry_dte[d], am_settled=not expiry_has_pm[d])
+        for d in sorted(expiry_dte)
+    )
     return Chain(
         product=product,
         snapshot_ts=datetime.now(UTC),
         underlying_price=underlying_price,
-        expiries=tuple(expiries.values()),
-        contracts=tuple(contracts),
+        expiries=expiries,
+        contracts=tuple(contract for _, contract in by_key.values()),
     )
 
 
-def get_chain(client: Client, product: str, symbol: str, days_to_expiration: int = 130) -> Chain:
-    resp = client.get_option_chain(symbol, days_to_expiration=days_to_expiration)
+def get_chain(client: Client, product: str, symbol: str, max_dte: int = 130) -> Chain:
+    """`from_date`/`to_date` are the chain endpoint's actual date filter — `days_to_expiration`
+    is an analytical-model input there, not a filter, so using it would pull every expiry."""
+    today = date.today()
+    resp = client.get_option_chain(
+        symbol, from_date=today, to_date=today + timedelta(days=max_dte)
+    )
     resp.raise_for_status()
     return parse_chain(resp.json(), product)

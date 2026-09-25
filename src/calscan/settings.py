@@ -133,6 +133,12 @@ class Secrets(BaseSettings):
     alpaca_secret_key: str = ""
     alpaca_data_feed: str = "iex"
 
+    @property
+    def schwab_token_file(self) -> Path:
+        """Resolved against the repo root, not the CWD, so Streamlit and cron agree."""
+        path = Path(self.schwab_token_path)
+        return path if path.is_absolute() else REPO_ROOT / path
+
 
 class Settings(BaseModel):
     config: AppConfig

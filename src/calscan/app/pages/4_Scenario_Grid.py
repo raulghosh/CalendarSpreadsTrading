@@ -12,6 +12,7 @@ from calscan.app.data import (
 from calscan.domain.greeks import weighted_vega
 from calscan.domain.scanner import Candidate
 from calscan.domain.scenario import default_horizon_days, scenario_grid
+from calscan.events import load_events
 from calscan.settings import Settings
 from calscan.store.db import get_engine, get_session_factory
 
@@ -28,7 +29,7 @@ cfg = settings.config
 session_factory = _session_factory()
 
 st.title("Scenario Grid")
-st.caption("Pick a candidate — position support lands in Phase 4.")
+st.caption("Reprices a scanner candidate across spot moves and paired front/back IV shocks.")
 
 has_live_creds = bool(settings.secrets.schwab_app_key or settings.secrets.alpaca_api_key)
 use_fixtures = st.toggle("Use bundled fixture data", value=not has_live_creds)
@@ -51,7 +52,7 @@ if chain is None:
     st.warning(f"No chain data available for {product}.")
     st.stop()
 
-ranked: list[Candidate] = build_ranked_candidates(chain, product, cfg, snapshot)
+ranked: list[Candidate] = build_ranked_candidates(chain, product, cfg, snapshot, load_events())
 if not ranked:
     st.info("No candidates from the current expiry/strike grid.")
     st.stop()

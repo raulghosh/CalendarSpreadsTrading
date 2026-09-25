@@ -94,8 +94,15 @@ def enumerate_expiry_pairs(
     return pairs
 
 
-def _by_strike(contracts: Sequence[OptionContract], side: Side) -> dict[float, OptionContract]:
-    return {c.strike: c for c in contracts if c.side == side}
+def _by_strike(
+    contracts: Sequence[OptionContract], side: Side, spot: float
+) -> dict[float, OptionContract]:
+    """OTM only (§5.7 step 2): calls at/above spot, puts at/below."""
+    return {
+        c.strike: c
+        for c in contracts
+        if c.side == side and (c.strike >= spot if side == "call" else c.strike <= spot)
+    }
 
 
 def _closest_contract(
@@ -206,6 +213,7 @@ def build_candidates(
 ) -> list[Candidate]:
     as_of = as_of or date.today()
     candidates: list[Candidate] = []
+    seen: set[tuple[Side, float, date, date]] = set()
 
     for front_exp, back_exp in enumerate_expiry_pairs(expiries, expiry_cfg):
         front_contracts = [c for c in contracts if c.expiry == front_exp.date]
@@ -223,8 +231,8 @@ def build_candidates(
         european_or_no_ex_div = style == "european" or not ex_div_in_window
 
         for side in strikes_cfg.sides:
-            front_by_strike = _by_strike(front_contracts, side)
-            back_by_strike = _by_strike(back_contracts, side)
+            front_by_strike = _by_strike(front_contracts, side, spot)
+            back_by_strike = _by_strike(back_contracts, side, spot)
             if not front_by_strike or not back_by_strike:
                 continue
 
@@ -235,14 +243,23 @@ def build_candidates(
                 back = _closest_contract(back_by_strike, target_strike)
                 if front is None or back is None or front.strike != back.strike:
                     continue
+                key = (side, front.strike, front_exp.date, back_exp.date)
+                if key in seen:  # coarse strike grids map several target deltas to one strike
+                    continue
                 if front.iv is None or back.iv is None:
                     continue
-                if None in (front.vega, back.vega):
+                if None in (front.delta, back.delta, front.gamma, back.gamma):
                     continue
+                if None in (front.theta, back.theta, front.vega, back.vega):
+                    continue
+
+                debit = back.mid - front.mid
+                if debit <= 0:  # same-strike calendar can't be a credit; quotes are stale
+                    continue
+                seen.add(key)
 
                 fv = fwd_vol(front.iv, t1, back.iv, t2)
                 fv_var = fwd_var(front.iv, t1, back.iv, t2)
-                debit = back.mid - front.mid
                 greeks = calendar_greeks(front, back, multiplier, contracts=1, spot=spot)
                 wvega = {
                     alpha: weighted_vega(front.vega, back.vega, t1, t2, alpha)  # type: ignore[arg-type]
@@ -304,6 +321,8 @@ def rank_candidates(
 
     def key(c: Candidate) -> tuple[bool, int, float]:
         tiebreak = c.fwd_vol if playbook == "A" else -slope_z
+        if math.isnan(tiebreak):  # NaN breaks sort ordering; push to the end of its tier
+            tiebreak = math.inf
         return (not c.tradeable, -c.soft_score, tiebreak)
 
     return sorted(candidates, key=key)

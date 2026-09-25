@@ -76,11 +76,16 @@ else:
             if latest_mark is None:
                 st.info("Not marked yet — click “Refresh marks now” above.")
             else:
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4, col5 = st.columns(5)
                 col1.metric("P&L %", f"{latest_mark['pnl_pct'] * 100:.1f}%")
                 col2.metric("Dist σ", f"{latest_mark['dist_sigma']:.2f}")
                 col3.metric("DTE1", latest_mark["dte1"])
-                col4.metric(latest_mark["verdict"], latest_mark["verdict_reason"])
+                ivts_now = latest_mark["ivts_now"]
+                col4.metric(
+                    "IVTS", f"{ivts_now:.3f}" if ivts_now == ivts_now else "n/a"
+                )  # NaN → curve-based exit branch was skipped
+                col5.metric(latest_mark["verdict"], latest_mark["verdict_reason"])
+                st.caption(f"Marked {latest_mark['ts']:%Y-%m-%d %H:%M} UTC")
 
             st.caption(
                 f"Debit paid: {position['debit_paid']:.2f} · "

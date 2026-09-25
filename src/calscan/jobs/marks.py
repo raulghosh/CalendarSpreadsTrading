@@ -63,6 +63,11 @@ def mark_position(
         window_end = min(as_of + timedelta(days=3), position["front_expiry"])
         event_soon = bool(events.in_window(as_of, window_end))
 
+    if position["playbook"] not in ("A", "B"):
+        raise ValueError(
+            f"position {position['id']} has playbook {position['playbook']!r}; the exit tree "
+            "needs A or B — close it and re-add with a playbook"
+        )
     targets = (
         cfg.targets.playbook_A if position["playbook"] == "A" else cfg.targets.playbook_B
     )

@@ -84,9 +84,9 @@ if len(spy_df) > cfg.regime.rv_window_long:
     rv_fig.add_trace(go.Scatter(x=rv20_series.index, y=rv20_series.values, name="RV20"))
     rv_fig.update_layout(height=350, yaxis_tickformat=".0%")
     st.plotly_chart(rv_fig, use_container_width=True)
-    st.caption("Front-IV overlay lands with Phase 2 (needs a product ATM curve from live chains).")
+    st.caption("Front-IV overlay needs persisted ATM curves (scheduled snapshot job) — not yet.")
 else:
-    st.info("Not enough SPY history for RV20 yet.")
+    st.info("Not enough SPY history for RV20 yet — run scripts/run_backfill.py with Alpaca keys.")
 
 # --- upcoming events ---
 st.subheader("Upcoming events (next 45 days)")
@@ -108,4 +108,4 @@ else:
     st.write("None in window.")
 
 st.subheader("ATM curve per product (out to 120 DTE)")
-st.info("Needs live option chains — lands with Phase 2.")
+st.info("Needs persisted ATM curves from the scheduled snapshot job — not yet.")

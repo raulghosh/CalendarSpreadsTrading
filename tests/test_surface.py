@@ -56,6 +56,22 @@ def test_atm_iv_interpolates_between_bracketing_strikes() -> None:
     assert point.method == "exact_strike"
 
 
+def test_atm_iv_raises_value_error_not_stop_iteration_when_no_iv_anywhere() -> None:
+    contracts = [
+        _contract(95, "call", None, delta=0.6),  # usable quote, delta present, but no IV
+        _contract(100, "call", None, bid=0.0),
+    ]
+    with pytest.raises(ValueError):
+        atm_iv_for_expiry(contracts, spot=100, r=0.0, q=0.0)
+
+
+def test_atm_iv_labels_out_of_range_forward_as_nearest_strike() -> None:
+    contracts = [_contract(90, "call", 0.20), _contract(95, "call", 0.18)]
+    point = atm_iv_for_expiry(contracts, spot=100, r=0.0, q=0.0)  # fwd above every strike
+    assert point.method == "nearest_strike"
+    assert point.strike_lo == point.strike_hi == 95
+
+
 def test_atm_iv_falls_back_to_closest_delta_when_atm_strike_unusable() -> None:
     contracts = [
         _contract(95, "call", 0.20, delta=0.6),  # |0.6-0.5| = 0.1, closest to ATM

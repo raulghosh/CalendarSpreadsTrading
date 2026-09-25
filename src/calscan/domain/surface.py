@@ -66,7 +66,8 @@ def atm_iv_for_expiry(
     iv_hi = iv_mid_at_strike(by_strike[k_hi])
 
     if k_lo == k_hi and iv_lo is not None:
-        atm_iv, method = iv_lo, "exact_strike"
+        atm_iv = iv_lo
+        method = "exact_strike" if k_lo == fwd else "nearest_strike"  # fwd outside the grid
     elif iv_lo is not None and iv_hi is not None:
         weight = (fwd - k_lo) / (k_hi - k_lo)
         atm_iv, method = iv_lo + weight * (iv_hi - iv_lo), "interpolated"
@@ -74,7 +75,7 @@ def atm_iv_for_expiry(
         best_strike, best_map, best_dist = None, None, math.inf
         for strike, side_map in by_strike.items():
             for c in side_map.values():
-                if not is_usable_quote(c) or c.delta is None:
+                if not is_usable_quote(c) or c.delta is None or c.iv is None:
                     continue
                 dist = abs(abs(c.delta) - 0.50)
                 if dist < best_dist:

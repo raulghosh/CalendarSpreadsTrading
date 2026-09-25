@@ -12,7 +12,7 @@ rather than pulling in a client with order-placement methods to get it.
 from __future__ import annotations
 
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.historical.option import OptionHistoricalDataClient
@@ -106,7 +106,13 @@ def get_chain(
     product: str,
     underlying_price: float,
     as_of: date | None = None,
+    max_dte: int = 130,
 ) -> Chain:
-    as_of = as_of or datetime.now(UTC).date()
-    snapshots = option_client.get_option_chain(OptionChainRequest(underlying_symbol=symbol))
+    as_of = as_of or date.today()
+    request = OptionChainRequest(
+        underlying_symbol=symbol,
+        expiration_date_gte=as_of,
+        expiration_date_lte=as_of + timedelta(days=max_dte),
+    )
+    snapshots = option_client.get_option_chain(request)
     return parse_chain(snapshots, product, underlying_price, as_of)

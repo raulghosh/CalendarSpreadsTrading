@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -127,6 +128,35 @@ def test_rank_candidates_puts_tradeable_first_and_sorts_by_soft_score() -> None:
         assert all(not f for f in tradeable_flags[first_false:])
     scores = [c.soft_score for c in ranked if c.tradeable]
     assert scores == sorted(scores, reverse=True)
+
+
+def test_candidates_are_otm_only_and_unique() -> None:
+    for product, chain in [("SPX", _load_spx_chain()), ("XSP", _load_xsp_chain())]:
+        candidates = _build_for(product, chain)
+        spot = chain.underlying_price
+        for c in candidates:
+            if c.side == "call":
+                assert c.strike >= spot, f"{product} ITM call candidate at {c.strike}"
+            else:
+                assert c.strike <= spot, f"{product} ITM put candidate at {c.strike}"
+        keys = [(c.side, c.strike, c.front.expiry, c.back.expiry) for c in candidates]
+        assert len(keys) == len(set(keys)), f"{product} produced duplicate candidates"
+
+
+def test_scanner_skips_credit_calendars_from_stale_quotes() -> None:
+    chain = _load_xsp_chain()
+    # make every back leg worth less than its front leg -> debit <= 0 everywhere
+    contracts = tuple(
+        replace(c, bid=0.01, ask=0.02) if c.dte == 65 else c for c in chain.contracts
+    )
+    broken = Chain(
+        product=chain.product,
+        snapshot_ts=chain.snapshot_ts,
+        underlying_price=chain.underlying_price,
+        expiries=chain.expiries,
+        contracts=contracts,
+    )
+    assert _build_for("XSP", broken) == []
 
 
 def test_gates_all_pass_property() -> None:

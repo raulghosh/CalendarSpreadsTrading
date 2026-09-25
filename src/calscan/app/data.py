@@ -50,7 +50,7 @@ class MarketSnapshot:
 def load_market_snapshot(
     session: Session, cfg: AppConfig, events: EventsCalendar | None = None
 ) -> MarketSnapshot | None:
-    """VIX-family + SPY-derived regime. Product-specific breakeven awaits Phase 2 chain data."""
+    """VIX-family + SPY-derived regime, computed from the DB alone (no chain fetch)."""
     vix_df = repo.get_vix_family_daily(session)
     spy_df = repo.get_spy_daily(session)
     if vix_df.empty or vix_df[["vix", "vix9d", "vix3m"]].iloc[-1].isna().any():
@@ -97,7 +97,7 @@ def load_market_snapshot(
         vix=float(latest["vix"]),
         vix_median_60d=vix_median_60d,
         rv10=rv10,
-        breakeven_daily_sigma=float("nan"),  # needs product ATM IV — lands with Phase 2 chains
+        breakeven_daily_sigma=float("nan"),  # not used by classify(); needs a product ATM IV
         events_in_window=events_in_window,
     )
     result = regime.classify(inputs, cfg.regime)
@@ -154,11 +154,21 @@ def load_live_chain(settings: Settings, cfg: AppConfig, product: str) -> Chain:
 
 
 def build_ranked_candidates(
-    chain: Chain, product: str, cfg: AppConfig, snapshot: MarketSnapshot | None
+    chain: Chain,
+    product: str,
+    cfg: AppConfig,
+    snapshot: MarketSnapshot | None,
+    events: EventsCalendar | None = None,
 ) -> list[Candidate]:
     """Same candidate build + rank used by both the Scanner and Scenario Grid pages."""
     pcfg = cfg.products[product]
     playbook = snapshot.regime.playbook if snapshot else "A"
+    events = events if events is not None else load_events()
+    horizon_end = date.today() + timedelta(days=365)
+    quad_witching = {
+        e.date for e in events.in_window(date.today(), horizon_end, ["quad_witching"])
+    }
+    ex_div = {e.date for e in events.in_window(date.today(), horizon_end, ["spy_ex_dividend"])}
     candidates = build_candidates(
         product=product,
         contracts=chain.contracts,
@@ -176,6 +186,8 @@ def build_ranked_candidates(
         rv10=snapshot.rv10 if snapshot else float("nan"),
         nav=cfg.nav,
         slope_z_favourable=playbook == "A",
+        quad_witching_dates=quad_witching,
+        ex_div_dates=ex_div if pcfg.style == "american" else (),
     )
     return rank_candidates(candidates, playbook, snapshot.slope_z if snapshot else 0.0)
 
