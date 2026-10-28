@@ -89,8 +89,8 @@ class Candidate(Base):
     fwd_vol: Mapped[float | None]
     debit_mid: Mapped[float]
     spread_width_pct: Mapped[float]
-    oi1: Mapped[int]
-    oi2: Mapped[int]
+    oi1: Mapped[int | None]  # Alpaca (SPY) carries no open interest
+    oi2: Mapped[int | None]
     net_delta: Mapped[float]
     net_gamma: Mapped[float]
     net_theta: Mapped[float]
@@ -147,6 +147,17 @@ class PositionMark(Base):
     ivts_now: Mapped[float | None]
     verdict: Mapped[str]
     verdict_reason: Mapped[str]
+
+
+class SnapshotRun(Base):
+    """One row per snapshot job run — per-step status, errors and alerts (not in build plan
+    §4; added so the UI can say *why* data is stale, not just that it is)."""
+
+    __tablename__ = "snapshot_runs"
+
+    ts: Mapped[datetime] = mapped_column(primary_key=True)
+    ok: Mapped[bool]
+    report: Mapped[dict[str, object]] = mapped_column(JSON)
 
 
 class Journal(Base):

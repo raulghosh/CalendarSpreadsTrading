@@ -28,8 +28,11 @@ session_factory = _session_factory()
 st.title("Regime")
 
 with session_factory() as session:  # type: ignore[operator]
-    vix_df = repo.get_vix_family_daily(session)
+    # complete days only — the newest is often partial while CBOE's per-index files catch up
+    vix_df = repo.get_vix_family_daily(session).dropna(subset=["vix", "vix3m"])
     spy_df = repo.get_spy_daily(session)
+    curves = repo.get_latest_atm_curves(session)
+    atm_history = repo.get_atm_curve_history(session, "SPX")
 
 if vix_df.empty:
     st.warning("No VIX-family history yet — run `scripts/run_backfill.py`.")
@@ -74,17 +77,34 @@ for band, dash in [(1, "dot"), (-1, "dot"), (2, "dash"), (-2, "dash")]:
 z_fig.update_layout(height=350)
 st.plotly_chart(z_fig, use_container_width=True)
 
-# --- RV10/RV20 (front IV overlay lands with Phase 2 chains) ---
-st.subheader("Realized vol (SPY)")
+# --- RV10/RV20 vs front IV (SPY is the RV proxy for SPX/XSP too) ---
+st.subheader("Realized vol (SPY) vs 30-day ATM IV (SPX)")
 if len(spy_df) > cfg.regime.rv_window_long:
     rv10_series = realized.realized_vol_series(spy_df["close"], cfg.regime.rv_window_short)
     rv20_series = realized.realized_vol_series(spy_df["close"], cfg.regime.rv_window_long)
     rv_fig = go.Figure()
     rv_fig.add_trace(go.Scatter(x=rv10_series.index, y=rv10_series.values, name="RV10"))
     rv_fig.add_trace(go.Scatter(x=rv20_series.index, y=rv20_series.values, name="RV20"))
+    iv30 = []
+    for ts, snap in atm_history.groupby("snapshot_ts"):
+        snap_points = list(zip(snap.dte, snap.atm_iv, strict=True))
+        try:
+            iv30.append((ts, termstructure.interpolate_atm_iv_at_dte(snap_points, 30)))
+        except ValueError:  # this snapshot's curve doesn't bracket 30 DTE
+            continue
+    if iv30:
+        rv_fig.add_trace(
+            go.Scatter(
+                x=[ts for ts, _ in iv30],
+                y=[iv for _, iv in iv30],
+                mode="lines+markers",
+                name="30d ATM IV (SPX)",
+            )
+        )
     rv_fig.update_layout(height=350, yaxis_tickformat=".0%")
     st.plotly_chart(rv_fig, use_container_width=True)
-    st.caption("Front-IV overlay needs persisted ATM curves (scheduled snapshot job) — not yet.")
+    if not iv30:
+        st.caption("No stored SPX ATM curves yet — the IV line appears after the first snapshot.")
 else:
     st.info("Not enough SPY history for RV20 yet — run scripts/run_backfill.py with Alpaca keys.")
 
@@ -108,4 +128,20 @@ else:
     st.write("None in window.")
 
 st.subheader("ATM curve per product (out to 120 DTE)")
-st.info("Needs persisted ATM curves from the scheduled snapshot job — not yet.")
+if curves:
+    curve_fig = go.Figure()
+    for product, points in sorted(curves.items()):
+        curve_fig.add_trace(
+            go.Scatter(
+                x=[p["dte"] for p in points],
+                y=[p["atm_iv"] for p in points],
+                mode="lines+markers",
+                name=f"{product} ({points[0]['snapshot_ts']:%Y-%m-%d %H:%M} UTC)",
+            )
+        )
+    curve_fig.update_layout(
+        xaxis_title="DTE", yaxis_title="ATM IV", yaxis_tickformat=".1%", height=380
+    )
+    st.plotly_chart(curve_fig, use_container_width=True)
+else:
+    st.info("No stored ATM curves yet — they appear after the first snapshot with chain data.")

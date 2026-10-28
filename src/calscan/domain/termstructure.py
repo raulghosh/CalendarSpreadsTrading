@@ -34,8 +34,10 @@ def fwd_vol(sigma1: float, t1: float, sigma2: float, t2: float) -> float:
 
 
 def slope_z_series(vix: pd.Series, vix3m: pd.Series, window: int = 252) -> pd.Series:
-    """Daily z-score history of the CBOE slope proxy VIX3M − VIX."""
-    proxy = vix3m - vix
+    """Daily z-score history of the CBOE slope proxy VIX3M − VIX. Days missing either index are
+    skipped, not NaN: CBOE's VIX file has values for market holidays that VIX3M's lacks, and
+    one NaN inside the rolling window would blank the z-score for the next `window` days."""
+    proxy = (vix3m - vix).dropna()
     mean = proxy.rolling(window).mean()
     std = proxy.rolling(window).std()
     return (proxy - mean) / std

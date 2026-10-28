@@ -55,3 +55,14 @@ def test_slope_z_series_flags_extremes() -> None:
 
     top = slope_z_top_threshold(z.dropna(), 0.90)
     assert top < z.iloc[-1]
+
+
+def test_slope_z_series_skips_days_missing_an_index() -> None:
+    days = pd.bdate_range("2024-01-01", periods=300)
+    vix = pd.Series([15 + (i % 7) * 0.3 for i in range(300)], index=days, dtype=float)
+    vix3m = vix + 2 + pd.Series([(i % 5) * 0.2 for i in range(300)], index=days)
+    vix3m.iloc[[100, 200, 290]] = float("nan")  # holidays: VIX published, VIX3M didn't
+
+    z = slope_z_series(vix, vix3m, window=252)
+    assert math.isfinite(z.iloc[-1])
+    assert days[290] not in z.index

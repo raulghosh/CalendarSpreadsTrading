@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import yaml
@@ -31,6 +31,18 @@ class EventsCalendar:
             for e in self.events
             if start <= e.date <= end and (categories is None or e.category in categories)
         )
+
+
+def is_trading_day(day: date, events: EventsCalendar) -> bool:
+    return day.weekday() < 5 and not events.in_window(day, day, ["market_holidays"])
+
+
+def previous_trading_day(day: date, events: EventsCalendar) -> date:
+    """The most recent trading day strictly before `day` — the newest daily close to expect."""
+    prev = day - timedelta(days=1)
+    while not is_trading_day(prev, events):
+        prev -= timedelta(days=1)
+    return prev
 
 
 def load_events(path: Path | str = REPO_ROOT / "events.yaml") -> EventsCalendar:

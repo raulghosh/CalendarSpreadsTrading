@@ -1,9 +1,13 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from calscan.adapters import alpaca, schwab
+from calscan.domain.scenario import reprice_chain
+from calscan.domain.surface import atm_iv_for_expiry
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -88,11 +92,79 @@ def test_schwab_parse_chain_coerces_nan_strings_and_nulls() -> None:
     assert c.gamma == 0.001  # untouched numerics pass through
 
 
-def test_schwab_is_am_settled_heuristic() -> None:
-    # a genuine 3rd-Friday SPX-root monthly should be flagged AM-settled
-    assert schwab._is_am_settled(date(2026, 9, 18), "SPX") is True
-    assert schwab._is_am_settled(date(2026, 9, 18), "SPXW") is False
-    assert schwab._is_am_settled(date(2026, 9, 11), "SPX") is False  # not the 3rd Friday
+def test_schwab_is_am_settled_reads_field_then_falls_back_to_root_rule() -> None:
+    third_friday, other_friday = date(2026, 9, 18), date(2026, 9, 11)
+    assert schwab._is_am_settled(other_friday, {"settlementType": "A"}, "SPX") is True
+    pm_on_spx_root = {"settlementType": "P", "optionRoot": "SPX"}
+    assert schwab._is_am_settled(third_friday, pm_on_spx_root, "SPX") is False
+    # no settlementType: a 3rd-Friday SPX-root monthly is AM, everything else PM
+    assert schwab._is_am_settled(third_friday, {"optionRoot": "SPX"}, "SPX") is True
+    assert schwab._is_am_settled(third_friday, {"optionRoot": "SPXW"}, "SPX") is False
+    assert schwab._is_am_settled(other_friday, {"optionRoot": "SPX"}, "SPX") is False
+
+
+def test_schwab_live_payload() -> None:
+    """Trimmed real $SPX chain (close of 2026-10-07): 3rd Fridays carry both the AM SPX
+    monthly and the PM SPXW contract at each strike."""
+    raw = json.loads((FIXTURES / "schwab_spx_chain_live.json").read_text())
+    chain = reprice_chain(schwab.parse_chain(raw, product="SPX"), r=0.043, q=0.013)
+
+    by_date = {e.date: e for e in chain.expiries}
+    third_fridays = (date(2026, 10, 16), date(2026, 11, 20))
+    assert set(by_date) == {*third_fridays, date(2026, 11, 5), date(2026, 12, 31)}
+    assert not any(e.am_settled for e in chain.expiries)  # every date has PM contracts
+    assert all(c.symbol.startswith("SPXW") for c in chain.contracts if c.expiry in third_fridays)
+    assert len(chain.contracts) == 32  # 4 expiries x 4 strikes x 2 sides, AM duplicates dropped
+
+    for e in chain.expiries:
+        point = atm_iv_for_expiry(chain.contracts_for(e.date), chain.underlying_price, 0.043, 0.013)
+        assert 0.05 < point.atm_iv < 0.40
+
+
+class _FakeResponse:
+    def __init__(self, status: int, payload: dict[str, Any]) -> None:
+        self.status_code = status
+        self._payload = payload
+        self.content = json.dumps(payload).encode()
+
+    def json(self) -> dict[str, Any]:
+        return self._payload
+
+    def raise_for_status(self) -> None:
+        if self.status_code != 200:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class _SizeCappedClient:
+    """One expiry per day; refuses any window wider than `max_days`, like Schwab's gateway."""
+
+    def __init__(self, max_days: int) -> None:
+        self.max_days = max_days
+        self.calls = 0
+
+    def get_option_chain(self, symbol: str, from_date: date, to_date: date) -> _FakeResponse:
+        self.calls += 1
+        if (to_date - from_date).days + 1 > self.max_days:
+            fault = {"fault": {"detail": {"errorcode": "protocol.http.TooBigBody"}}}
+            return _FakeResponse(502, fault)
+        days = [from_date + timedelta(days=i) for i in range((to_date - from_date).days + 1)]
+        exp_map: dict[str, Any] = {f"{d}:{(d - from_date).days}": {"100.0": []} for d in days}
+        return _FakeResponse(
+            200, {"underlyingPrice": 100.0, "callExpDateMap": exp_map, "putExpDateMap": exp_map}
+        )
+
+
+def test_fetch_chain_halves_the_window_until_each_piece_fits() -> None:
+    client = _SizeCappedClient(max_days=10)
+    start, end = date(2026, 10, 7), date(2026, 10, 7) + timedelta(days=120)
+    raw = schwab._fetch_chain(client, "$SPX", start, end)
+
+    assert len(raw["callExpDateMap"]) == 121  # every day, no gaps or overlaps
+    assert len(raw["putExpDateMap"]) == 121
+    assert raw["underlyingPrice"] == 100.0
+
+    with pytest.raises(RuntimeError, match="502"):  # a single day that still overflows
+        schwab._fetch_chain(_SizeCappedClient(max_days=0), "$SPX", start, start)
 
 
 def test_alpaca_parse_chain_spy() -> None:

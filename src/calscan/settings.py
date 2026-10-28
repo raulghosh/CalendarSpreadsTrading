@@ -89,11 +89,18 @@ class ScenarioGridConfig(BaseModel):
 
 class ScheduleConfig(BaseModel):
     run_times_et: list[str]
+    stale_after_minutes: int
+
+
+class SnapshotConfig(BaseModel):
+    max_dte: int
+    atm_iv_sanity: tuple[float, float]
 
 
 class AlertsConfig(BaseModel):
     enabled: bool
     channel: Literal["none", "email", "pushover", "slack"]
+    min_candidate_score: int
 
 
 class AppConfig(BaseModel):
@@ -108,6 +115,7 @@ class AppConfig(BaseModel):
     exit_tree: ExitTreeConfig
     scenario_grid: ScenarioGridConfig
     schedule: ScheduleConfig
+    snapshot: SnapshotConfig
     nav: float
     alerts: AlertsConfig
 
@@ -132,6 +140,8 @@ class Secrets(BaseSettings):
     alpaca_api_key: str = ""
     alpaca_secret_key: str = ""
     alpaca_data_feed: str = "iex"
+
+    slack_webhook_url: str = ""  # only needed when alerts.channel is "slack"
 
     @property
     def schwab_token_file(self) -> Path:

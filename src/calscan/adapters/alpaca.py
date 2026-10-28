@@ -14,10 +14,12 @@ from __future__ import annotations
 import re
 from datetime import UTC, date, datetime, timedelta
 
+from alpaca.data.enums import DataFeed
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.historical.option import OptionHistoricalDataClient
 from alpaca.data.models.snapshots import OptionsSnapshot
-from alpaca.data.requests import OptionChainRequest, StockLatestTradeRequest
+from alpaca.data.requests import OptionChainRequest, StockBarsRequest, StockLatestTradeRequest
+from alpaca.data.timeframe import TimeFrame
 
 from calscan.domain.models import Chain, Expiry, OptionContract, Quote, Side
 from calscan.settings import Secrets
@@ -39,11 +41,31 @@ def get_option_client(secrets: Secrets) -> OptionHistoricalDataClient:
     )
 
 
-def get_quote(client: StockHistoricalDataClient, symbol: str) -> Quote:
-    trade = client.get_stock_latest_trade(StockLatestTradeRequest(symbol_or_symbols=symbol))[
-        symbol
-    ]
+def get_quote(client: StockHistoricalDataClient, symbol: str, feed: str) -> Quote:
+    request = StockLatestTradeRequest(symbol_or_symbols=symbol, feed=DataFeed(feed))
+    trade = client.get_stock_latest_trade(request)[symbol]
     return Quote(symbol=symbol, price=trade.price, timestamp=trade.timestamp)
+
+
+def get_daily_bars(
+    client: StockHistoricalDataClient, symbol: str, start: datetime, feed: str
+) -> list[dict[str, object]]:
+    """Daily OHLCV rows shaped for spy_daily. `feed` is ALPACA_DATA_FEED — free accounts need
+    "iex"; asking for SIP without a subscription is rejected for recent bars."""
+    request = StockBarsRequest(
+        symbol_or_symbols=symbol, timeframe=TimeFrame.Day, start=start, feed=DataFeed(feed)
+    )
+    return [
+        {
+            "date": bar.timestamp.date(),
+            "open": bar.open,
+            "high": bar.high,
+            "low": bar.low,
+            "close": bar.close,
+            "volume": int(bar.volume),
+        }
+        for bar in client.get_stock_bars(request)[symbol]
+    ]
 
 
 def _parse_occ_symbol(symbol: str) -> tuple[date, Side, float]:

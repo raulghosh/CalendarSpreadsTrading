@@ -6,22 +6,34 @@ from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
-from calscan.store.schema import Journal, Position, PositionMark, SpyDaily, VixFamilyDaily
+from calscan.store.schema import (
+    AtmCurve,
+    Candidate,
+    Journal,
+    Position,
+    PositionMark,
+    SnapshotRun,
+    SpyDaily,
+    TermStructure,
+    VixFamilyDaily,
+)
 
 
 def upsert_vix_family_daily(session: Session, rows: list[dict[str, object]]) -> None:
-    """Each row: {date, vix?, vix9d?, vix3m?, vix6m?}. Missing keys leave existing values alone."""
+    """Each row: {date, vix?, vix9d?, vix3m?, vix6m?}. A missing or null value never overwrites a
+    stored one: CBOE's per-index files publish at different times, so a refresh can carry
+    VIX3M for a date whose VIX hasn't landed yet — that must not erase the live VIX stored
+    for it."""
     if not rows:
         return
     stmt = insert(VixFamilyDaily)
     update_cols = {
-        col: stmt.excluded[col]
+        col: func.coalesce(stmt.excluded[col], getattr(VixFamilyDaily, col))
         for col in ("vix", "vix9d", "vix3m", "vix6m")
-        if any(col in row for row in rows)
     }
     stmt = stmt.on_conflict_do_update(index_elements=["date"], set_=update_cols)
     session.execute(stmt, rows)
@@ -148,6 +160,127 @@ def insert_journal_entry(
 def get_journal_entries(session: Session) -> list[dict[str, Any]]:
     stmt = select(Journal).order_by(Journal.ts.desc())
     return [_row_to_dict(j) for j in session.scalars(stmt).all()]
+
+
+def upsert_atm_curve(session: Session, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        return
+    stmt = insert(AtmCurve)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["snapshot_ts", "product", "expiry"],
+        set_={
+            c: stmt.excluded[c]
+            for c in ("dte", "atm_iv", "fwd", "atm_strike_lo", "atm_strike_hi", "method")
+        },
+    )
+    session.execute(stmt, rows)
+    session.commit()
+
+
+def upsert_term_structure(session: Session, row: dict[str, Any]) -> None:
+    stmt = insert(TermStructure).values(**row)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["snapshot_ts", "product"],
+        set_={c: stmt.excluded[c] for c in row if c not in ("snapshot_ts", "product")},
+    )
+    session.execute(stmt)
+    session.commit()
+
+
+def replace_candidates(
+    session: Session, snapshot_ts: datetime, product: str, rows: list[dict[str, Any]]
+) -> None:
+    """Delete-then-insert per (snapshot, product): re-running a snapshot never duplicates."""
+    session.execute(
+        delete(Candidate).where(
+            Candidate.snapshot_ts == snapshot_ts, Candidate.product == product
+        )
+    )
+    session.add_all(Candidate(**row) for row in rows)
+    session.commit()
+
+
+def upsert_snapshot_run(
+    session: Session, ts: datetime, ok: bool, report: dict[str, Any]
+) -> None:
+    stmt = insert(SnapshotRun).values(ts=ts, ok=ok, report=report)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["ts"], set_={"ok": stmt.excluded.ok, "report": stmt.excluded.report}
+    )
+    session.execute(stmt)
+    session.commit()
+
+
+def get_latest_snapshot_run(session: Session) -> dict[str, Any] | None:
+    run = session.scalars(select(SnapshotRun).order_by(SnapshotRun.ts.desc()).limit(1)).first()
+    return _row_to_dict(run) if run else None
+
+
+def get_latest_term_structure(
+    session: Session, before: datetime | None = None
+) -> dict[str, dict[str, Any]]:
+    """Most recent term-structure row per product (strictly before `before`, if given)."""
+    stmt = select(TermStructure).order_by(TermStructure.snapshot_ts)
+    if before is not None:
+        stmt = stmt.where(TermStructure.snapshot_ts < before)
+    latest: dict[str, dict[str, Any]] = {}
+    for row in session.scalars(stmt).all():
+        latest[row.product] = _row_to_dict(row)
+    return latest
+
+
+def get_term_structure_at(
+    session: Session, snapshot_ts: datetime, product: str
+) -> dict[str, Any] | None:
+    row = session.get(TermStructure, (snapshot_ts, product))
+    return _row_to_dict(row) if row else None
+
+
+def get_candidates(
+    session: Session, product: str, before: datetime | None = None
+) -> tuple[datetime | None, list[dict[str, Any]]]:
+    """The latest snapshot's candidates for a product (strictly before `before`, if given),
+    in rank order."""
+    latest = select(func.max(Candidate.snapshot_ts)).where(Candidate.product == product)
+    if before is not None:
+        latest = latest.where(Candidate.snapshot_ts < before)
+    ts = session.scalar(latest)
+    if ts is None:
+        return None, []
+    stmt = (
+        select(Candidate)
+        .where(Candidate.product == product, Candidate.snapshot_ts == ts)
+        .order_by(Candidate.rank)
+    )
+    return ts, [_row_to_dict(c) for c in session.scalars(stmt).all()]
+
+
+def get_latest_atm_curves(session: Session) -> dict[str, list[dict[str, Any]]]:
+    """Each product's ATM curve from its most recent snapshot, ordered by DTE."""
+    latest_ts = (
+        select(AtmCurve.product, func.max(AtmCurve.snapshot_ts).label("ts"))
+        .group_by(AtmCurve.product)
+        .subquery()
+    )
+    stmt = (
+        select(AtmCurve)
+        .join(
+            latest_ts,
+            (AtmCurve.product == latest_ts.c.product) & (AtmCurve.snapshot_ts == latest_ts.c.ts),
+        )
+        .order_by(AtmCurve.product, AtmCurve.dte)
+    )
+    curves: dict[str, list[dict[str, Any]]] = {}
+    for row in session.scalars(stmt).all():
+        curves.setdefault(row.product, []).append(_row_to_dict(row))
+    return curves
+
+
+def get_atm_curve_history(session: Session, product: str) -> pd.DataFrame:
+    query = select(AtmCurve.snapshot_ts, AtmCurve.dte, AtmCurve.atm_iv).where(
+        AtmCurve.product == product
+    )
+    return pd.read_sql(query, session.connection())
 
 
 def _row_to_dict(row: Any) -> dict[str, Any]:

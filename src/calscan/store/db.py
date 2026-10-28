@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine
@@ -10,7 +11,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from calscan.store.schema import Base
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_DB_PATH = REPO_ROOT / "data" / "calendar.db"
+# CALSCAN_DB points the app at another file — e.g. a throwaway DB filled from fixtures, so the
+# UI can be exercised without writing demo data into the real history.
+DEFAULT_DB_PATH = Path(os.environ.get("CALSCAN_DB", REPO_ROOT / "data" / "calendar.db"))
 
 
 def get_engine(db_path: Path | str = DEFAULT_DB_PATH) -> Engine:

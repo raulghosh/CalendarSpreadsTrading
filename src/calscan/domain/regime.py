@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from calscan.settings import RegimeConfig
@@ -41,6 +42,11 @@ def classify(inputs: RegimeInputs, cfg: RegimeConfig) -> RegimeResult:
         regime, playbook, note = "BACKWARDATION_STRONG", "B", "wait for confirmation"
     elif inputs.ivts >= cfg.ivts_backwardation:
         regime, playbook, note = "BACKWARDATION", "B", "early — confirmation required"
+    elif inputs.ivts <= cfg.ivts_carry_max and not (
+        math.isfinite(inputs.slope_z) and math.isfinite(inputs.slope_z_top)
+    ):  # NaN compares False, which would silently read as "too steep"
+        regime, playbook = "CONTANGO_UNVERIFIED", "NONE"
+        note = "slope_z unknown — needs a full window of complete VIX/VIX3M history"
     elif inputs.ivts <= cfg.ivts_carry_max and inputs.slope_z < inputs.slope_z_top:
         regime, playbook, note = "CONTANGO_CARRY", "A", None
     elif inputs.ivts <= cfg.ivts_carry_max:

@@ -1,11 +1,15 @@
 import math
+from datetime import date
 
 import pytest
 
+from calscan.domain.models import OptionContract, Side
 from calscan.domain.scenario import (
     black_scholes_price,
+    bs_greeks,
     default_horizon_days,
     implied_vol,
+    reprice_from_mid,
     scenario_grid,
 )
 
@@ -91,3 +95,44 @@ def test_scenario_grid_respects_explicit_horizon_and_dte_floor() -> None:
         horizon_days=100,  # way beyond front_dte — must be clamped
     )
     assert grid.horizon_days == 9  # clamped to front_dte - 1
+
+
+def _contract(side: Side, strike: float, bid: float, ask: float, dte: int = 45) -> OptionContract:
+    return OptionContract(
+        symbol="X", underlying_symbol="XSP", strike=strike, side=side, expiry=date(2026, 11, 20),
+        dte=dte, bid=bid, ask=ask, iv=0.99, delta=9.0, gamma=9.0, theta=9.0, vega=9.0,
+        open_interest=0, underlying_price=780.0,
+    )
+
+
+@pytest.mark.parametrize("side", ["call", "put"])
+def test_reprice_from_mid_recovers_iv_and_greeks_match_finite_differences(side: Side) -> None:
+    spot, strike, r, q, sigma, dte = 780.0, 790.0, 0.043, 0.013, 0.14, 45
+    t = dte / 365
+    fair = black_scholes_price(spot, strike, t, r, q, sigma, side)
+    c = reprice_from_mid(_contract(side, strike, fair - 0.05, fair + 0.05, dte), spot, r, q)
+
+    assert c.iv == pytest.approx(sigma, abs=1e-5)  # broker's iv=0.99 replaced by the mid's
+    delta, gamma, theta, vega = bs_greeks(spot, strike, t, r, q, sigma, side)
+    greeks = (c.delta, c.gamma, c.theta, c.vega)
+    assert greeks == pytest.approx((delta, gamma, theta, vega), rel=1e-4)
+
+    def price(s: float = spot, tt: float = t, v: float = sigma) -> float:
+        return black_scholes_price(s, strike, tt, r, q, v, side)
+
+    h = 0.01
+    assert delta == pytest.approx((price(s=spot + h) - price(s=spot - h)) / (2 * h), rel=1e-4)
+    assert gamma == pytest.approx(
+        (price(s=spot + h) - 2 * fair + price(s=spot - h)) / h**2, rel=1e-3
+    )
+    assert vega == pytest.approx(price(v=sigma + 0.01) - fair, rel=2e-2)  # per vol point
+    assert theta == pytest.approx(price(tt=t - 1 / 365) - fair, rel=2e-2)  # per calendar day
+
+
+def test_reprice_from_mid_blanks_unusable_quotes() -> None:
+    spot, r, q = 780.0, 0.043, 0.013
+    no_bid = reprice_from_mid(_contract("call", 800.0, 0.0, 0.10), spot, r, q)
+    below_intrinsic = reprice_from_mid(_contract("call", 700.0, 50.0, 50.2), spot, r, q)
+    expired = reprice_from_mid(_contract("call", 780.0, 1.0, 1.2, dte=0), spot, r, q)
+    for c in (no_bid, below_intrinsic, expired):
+        assert (c.iv, c.delta, c.gamma, c.theta, c.vega) == (None, None, None, None, None)

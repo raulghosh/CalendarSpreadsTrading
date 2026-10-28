@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from calscan.app.data import load_fixture_chain, load_live_chain, load_market_snapshot
-from calscan.domain.models import Chain
-from calscan.events import load_events
-from calscan.jobs.marks import mark_position
 from calscan.settings import Settings
 from calscan.store import repo
 from calscan.store.db import get_engine, get_session_factory
 
 st.set_page_config(page_title="Positions — Calendar Scanner", page_icon="📋", layout="wide")
+ET = ZoneInfo("America/New_York")
 
 
 @st.cache_resource
@@ -25,46 +23,18 @@ cfg = settings.config
 session_factory = _session_factory()
 
 st.title("Positions")
-st.caption("Decision support only — no order placement.")
-
-has_live_creds = bool(settings.secrets.schwab_app_key or settings.secrets.alpaca_api_key)
-use_fixtures = st.toggle("Use bundled fixture data for marking", value=not has_live_creds)
+st.caption(
+    "Decision support only — no order placement. Marks and exit-tree verdicts update with each "
+    "snapshot (Home → Run snapshot now)."
+)
 
 with session_factory() as session:  # type: ignore[operator]
     open_positions = repo.get_positions(session, status="open")
     latest_marks = repo.get_latest_marks(session)
-    snapshot = load_market_snapshot(session, cfg)
 
 if not open_positions:
     st.info("No open positions. Add one from the Scanner page.")
 else:
-    if st.button("Refresh marks now"):
-        events = load_events()
-        ivts_now = snapshot.ivts if snapshot else float("nan")
-        chains: dict[str, Chain | None] = {}
-        with session_factory() as session:  # type: ignore[operator]
-            for position in open_positions:
-                product = position["product"]
-                if product not in chains:
-                    if use_fixtures:
-                        chains[product] = load_fixture_chain(product)
-                    else:
-                        try:
-                            chains[product] = load_live_chain(settings, cfg, product)
-                        except Exception as exc:
-                            st.warning(f"Live fetch failed for {product}: {exc}")
-                            chains[product] = None
-                chain = chains[product]
-                if chain is None:
-                    continue
-                try:
-                    mark = mark_position(position, chain, ivts_now, events, cfg, as_of=date.today())
-                except ValueError as exc:
-                    st.warning(f"Position #{position['id']}: {exc}")
-                    continue
-                repo.insert_position_mark(session, mark)
-        st.rerun()
-
     for position in open_positions:
         latest_mark = latest_marks.get(position["id"])
         header = (
@@ -74,7 +44,7 @@ else:
         )
         with st.expander(header, expanded=True):
             if latest_mark is None:
-                st.info("Not marked yet — click “Refresh marks now” above.")
+                st.info("Not marked yet — it will be on the next snapshot.")
             else:
                 col1, col2, col3, col4, col5 = st.columns(5)
                 col1.metric("P&L %", f"{latest_mark['pnl_pct'] * 100:.1f}%")
@@ -82,10 +52,11 @@ else:
                 col3.metric("DTE1", latest_mark["dte1"])
                 ivts_now = latest_mark["ivts_now"]
                 col4.metric(
-                    "IVTS", f"{ivts_now:.3f}" if ivts_now == ivts_now else "n/a"
-                )  # NaN → curve-based exit branch was skipped
+                    "IVTS", f"{ivts_now:.3f}" if ivts_now is not None else "n/a"
+                )  # missing → the curve-based exit branch was skipped
                 col5.metric(latest_mark["verdict"], latest_mark["verdict_reason"])
-                st.caption(f"Marked {latest_mark['ts']:%Y-%m-%d %H:%M} UTC")
+                marked = latest_mark["ts"].replace(tzinfo=UTC).astimezone(ET)
+                st.caption(f"Marked {marked:%Y-%m-%d %H:%M} ET")
 
             st.caption(
                 f"Debit paid: {position['debit_paid']:.2f} · "

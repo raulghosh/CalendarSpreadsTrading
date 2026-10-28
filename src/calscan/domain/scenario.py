@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from scipy.optimize import brentq
-from scipy.stats import norm
 
-from calscan.domain.models import Side
+from calscan.domain.models import Chain, OptionContract, Side
 from calscan.domain.sigma import sigma_pts
+
+
+def _ncdf(x: float) -> float:
+    # ponytail: stdlib erfc instead of scipy's norm.cdf — same precision, ~100x cheaper per
+    # scalar call, and reprice_chain runs ~20k inversions per SPX snapshot
+    return 0.5 * math.erfc(-x / math.sqrt(2))
 
 
 def black_scholes_price(
@@ -26,8 +31,8 @@ def black_scholes_price(
     disc_r = math.exp(-r * t)
 
     if side == "call":
-        return float(spot * disc_q * norm.cdf(d1) - strike * disc_r * norm.cdf(d2))
-    return float(strike * disc_r * norm.cdf(-d2) - spot * disc_q * norm.cdf(-d1))
+        return spot * disc_q * _ncdf(d1) - strike * disc_r * _ncdf(d2)
+    return strike * disc_r * _ncdf(-d2) - spot * disc_q * _ncdf(-d1)
 
 
 def implied_vol(
@@ -39,6 +44,52 @@ def implied_vol(
         return black_scholes_price(spot, strike, t, r, q, sigma, side) - price
 
     return float(brentq(diff, 1e-4, 5.0, xtol=1e-6))
+
+
+def bs_greeks(
+    spot: float, strike: float, t: float, r: float, q: float, sigma: float, side: Side
+) -> tuple[float, float, float, float]:
+    """(delta, gamma, theta per calendar day, vega per vol point), per share — the units
+    brokers quote, so per-contract greeks read the way a trader expects."""
+    sqrt_t = math.sqrt(t)
+    d1 = (math.log(spot / strike) + (r - q + 0.5 * sigma**2) * t) / (sigma * sqrt_t)
+    d2 = d1 - sigma * sqrt_t
+    disc_q, disc_r = math.exp(-q * t), math.exp(-r * t)
+    pdf = math.exp(-0.5 * d1 * d1) / math.sqrt(2 * math.pi)
+    decay = -spot * disc_q * pdf * sigma / (2 * sqrt_t)
+    if side == "call":
+        delta = disc_q * _ncdf(d1)
+        theta = decay + q * spot * disc_q * _ncdf(d1) - r * strike * disc_r * _ncdf(d2)
+    else:
+        delta = -disc_q * _ncdf(-d1)
+        theta = decay - q * spot * disc_q * _ncdf(-d1) + r * strike * disc_r * _ncdf(-d2)
+    gamma = disc_q * pdf / (spot * sigma * sqrt_t)
+    vega = spot * disc_q * pdf * sqrt_t / 100
+    return delta, gamma, theta / 365, vega
+
+
+def reprice_from_mid(c: OptionContract, spot: float, r: float, q: float) -> OptionContract:
+    """IV and greeks implied from the contract's own quote mid, with the same model and rates
+    the scenario grid reprices with. A broker's IV field comes from its own model and timing —
+    Schwab's ran up to 2.4 vol points off its own mids on the first live pull, and it rounds
+    gamma to 3 decimals — so taking everything from the mid keeps IV, debit, and grid in
+    agreement. Applied to SPY too (American, so European IV is approximate there; SPY rows
+    are comparison-only). No two-sided quote, or a mid BS can't reach → IV and greeks None."""
+    t = c.dte / 365
+    unusable = replace(c, iv=None, delta=None, gamma=None, theta=None, vega=None)
+    if t <= 0 or c.bid <= 0 or c.ask < c.bid:
+        return unusable
+    try:
+        iv = implied_vol(c.mid, spot, c.strike, t, r, q, c.side)
+    except (ValueError, RuntimeError):  # mid below intrinsic, or no convergence
+        return unusable
+    delta, gamma, theta, vega = bs_greeks(spot, c.strike, t, r, q, iv, c.side)
+    return replace(c, iv=iv, delta=delta, gamma=gamma, theta=theta, vega=vega)
+
+
+def reprice_chain(chain: Chain, r: float, q: float) -> Chain:
+    spot = chain.underlying_price
+    return replace(chain, contracts=tuple(reprice_from_mid(c, spot, r, q) for c in chain.contracts))
 
 
 @dataclass(frozen=True, slots=True)

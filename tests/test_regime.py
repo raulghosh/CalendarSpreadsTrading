@@ -52,6 +52,13 @@ def test_contango_steep_skips_top_decile() -> None:
     assert result.playbook == "NONE"
 
 
+def test_contango_with_unknown_slope_z_is_unverified_not_steep() -> None:
+    for nan_field in ("slope_z", "slope_z_top"):
+        result = classify(_inputs(ivts=0.85, **{nan_field: float("nan")}), CFG)
+        assert result.regime == "CONTANGO_UNVERIFIED"
+        assert result.playbook == "NONE"
+
+
 def test_transition() -> None:
     result = classify(_inputs(ivts=0.96), CFG)
     assert result.regime == "TRANSITION"

@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import math
+from typing import Any
 
 import streamlit as st
 
-from calscan.app.data import (
-    build_ranked_candidates,
-    load_fixture_chain,
-    load_live_chain,
-    load_market_snapshot,
-    open_position_from_candidate,
-)
-from calscan.domain.scanner import spread_width_pct
-from calscan.events import load_events
+from calscan.app.data import load_market_snapshot, open_position_from_row, product_view
 from calscan.settings import Settings
+from calscan.store import repo
 from calscan.store.db import get_engine, get_session_factory
 
 st.set_page_config(page_title="Scanner — Calendar Scanner", page_icon="🔎", layout="wide")
@@ -29,97 +22,98 @@ cfg = settings.config
 session_factory = _session_factory()
 
 st.title("Scanner")
-st.caption("Decision support only — no order placement. Reprice any row on the Scenario Grid page.")
-
-has_live_creds = bool(settings.secrets.schwab_app_key or settings.secrets.alpaca_api_key)
-use_fixtures = st.toggle("Use bundled fixture data", value=not has_live_creds)
-if use_fixtures:
-    st.caption("Demo mode: SPX/XSP/SPY chains loaded from tests/fixtures/, not live quotes.")
+st.caption(
+    "Decision support only — no order placement. Candidates come from the latest stored "
+    "snapshot (refresh via Home → Run snapshot now); reprice any row on the Scenario Grid page."
+)
 
 with session_factory() as session:  # type: ignore[operator]
     snapshot = load_market_snapshot(session, cfg)
-events = load_events()
+    has_snapshot = repo.get_latest_snapshot_run(session) is not None
 
-if snapshot is None or math.isnan(snapshot.rv10):
+demo = st.toggle("Demo mode (bundled fixture chains)", value=not has_snapshot)
+if snapshot is None or snapshot.rv10 != snapshot.rv10:  # NaN check
     st.warning(
         "RV10 is unknown (no SPY price history in the DB) — the RV10 gate fails closed, so "
-        "nothing can be marked tradeable until `scripts/run_backfill.py` has run with Alpaca keys."
+        "nothing can be marked tradeable until SPY history is loaded."
     )
-
 regime_playbook = snapshot.regime.playbook if snapshot else "NONE"
-wvega_alphas = [cfg.vol_shock_alpha.baseline, *cfg.vol_shock_alpha.stress_cases]
+
+
+def _table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "✓": "✅" if all(r["gates_passed"].values()) else "—",
+            "side": r["side"],
+            "strike": r["strike"],
+            "front exp": r["front_expiry"],
+            "back exp": r["back_expiry"],
+            "dte1": r["dte1"],
+            "dte2": r["dte2"],
+            "R": round(r["ratio"], 2),
+            "iv1": round(r["iv1"], 4),
+            "iv2": round(r["iv2"], 4),
+            "fwd vol": round(r["fwd_vol"], 4) if r["fwd_vol"] is not None else None,
+            "debit": round(r["debit_mid"], 2),
+            "spread %": round(r["spread_width_pct"] * 100, 2),
+            "oi1": r["oi1"],
+            "oi2": r["oi2"],
+            "Δ@K": round(r["delta_at_strike"], 3),
+            "d σ": round(r["d_sigma"], 2),
+            "net θ": round(r["net_theta"], 2),
+            "raw vega": round(r["raw_vega"], 2),
+            "wvega .35": round(r["wvega_035"], 2),
+            "wvega .5": round(r["wvega_050"], 2),
+            "wvega .7": round(r["wvega_070"], 2),
+            "daily BE pts": round(r["daily_breakeven_pts"], 2),
+            "gates": ", ".join(k for k, ok in r["gates_passed"].items() if not ok) or "all pass",
+            "score": r["soft_score"],
+        }
+        for r in rows
+    ]
+
 
 tabs = st.tabs(list(cfg.products.keys()))
 for product, tab in zip(cfg.products.keys(), tabs, strict=True):
     with tab:
-        if use_fixtures:
-            chain = load_fixture_chain(product)
-        else:
-            try:
-                chain = load_live_chain(settings, cfg, product)
-            except Exception as exc:  # best-effort live fetch; surfaced in the UI, not raised
-                st.warning(f"Live fetch failed for {product}: {exc}")
-                chain = None
-        if chain is None:
-            st.warning(f"No chain data available for {product}.")
+        with session_factory() as session:  # type: ignore[operator]
+            view = product_view(session, cfg, product, demo, snapshot)
+        if not view.rows:
+            st.info(f"No {product} candidates — {view.source}.")
             continue
 
-        ranked = build_ranked_candidates(chain, product, cfg, snapshot, events)
-        if not ranked:
-            st.info("No candidates from the current expiry/strike grid.")
-            continue
-
-        st.caption(f"Spot: {chain.underlying_price:,.2f} · {len(ranked)} candidates")
+        spot = f"spot {view.spot:,.2f} · " if view.spot is not None else ""
+        st.caption(f"{view.source} · {spot}{len(view.rows)} candidates")
         if cfg.products[product].source == "alpaca":
             st.caption(
                 "Alpaca's data feed carries no open interest, so the OI gate can't pass here — "
                 "SPY rows are for comparison, never marked tradeable."
             )
-        rows = [
-            {
-                "✓": "✅" if c.tradeable else "—",
-                "side": c.side,
-                "strike": c.strike,
-                "front exp": c.front.expiry,
-                "back exp": c.back.expiry,
-                "dte1": c.front.dte,
-                "dte2": c.back.dte,
-                "R": round(c.ratio, 2),
-                "iv1": round(c.front.iv, 4) if c.front.iv is not None else None,
-                "iv2": round(c.back.iv, 4) if c.back.iv is not None else None,
-                "fwd vol": round(c.fwd_vol, 4) if not math.isnan(c.fwd_vol) else None,
-                "debit": round(c.debit_mid, 2),
-                "spread1 %": round(spread_width_pct(c.front) * 100, 2),
-                "spread2 %": round(spread_width_pct(c.back) * 100, 2),
-                "oi1": c.front.open_interest,
-                "oi2": c.back.open_interest,
-                "net θ": round(c.greeks.net_theta, 2),
-                "raw vega": round(c.greeks.raw_vega, 2),
-                **{f"wvega {a:g}": round(c.wvega[a], 2) for a in wvega_alphas},
-                "daily BE pts": round(c.greeks.daily_breakeven_pts, 2),
-                "gates": ", ".join(k for k, v in c.gates.as_dict().items() if not v) or "all pass",
-                "score": c.soft_score,
-            }
-            for c in ranked
-        ]
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        st.dataframe(_table(view.rows), use_container_width=True, hide_index=True)
 
         st.subheader("Add to positions")
+        if not view.live or view.spot is None:
+            st.caption("Demo rows are fixtures and can't be opened as real positions.")
+            continue
         st.caption("Records it as opened — no order is sent.")
         labels = [
-            f"{c.side} {c.strike:g}  {c.front.expiry}/{c.back.expiry}  "
-            f"({'tradeable' if c.tradeable else 'gated'}, score {c.soft_score})"
-            for c in ranked
+            f"#{r['rank']} {r['side']} {r['strike']:g}  {r['front_expiry']}/{r['back_expiry']}  "
+            f"({'tradeable' if all(r['gates_passed'].values()) else 'gated'}, "
+            f"score {r['soft_score']:g})"
+            for r in view.rows
         ]
+
         def _label(i: int, labels: list[str] = labels) -> str:
             return labels[i]
 
         with st.form(key=f"add_position_{product}"):
-            choice = st.selectbox("Candidate", options=list(range(len(ranked))), format_func=_label)
+            choice = st.selectbox(
+                "Candidate", options=list(range(len(view.rows))), format_func=_label
+            )
             playbook = st.selectbox(
                 "Playbook (sets the exit-tree thresholds)",
                 options=["A", "B"],
-                index=0 if regime_playbook != "B" else 1,
+                index=1 if regime_playbook == "B" else 0,
                 help=f"Current regime suggests: {regime_playbook}",
             )
             contracts = st.number_input("Contracts", min_value=1, value=1, step=1)
@@ -127,13 +121,7 @@ for product, tab in zip(cfg.products.keys(), tabs, strict=True):
             submitted = st.form_submit_button("Add to positions")
         if submitted and choice is not None:
             with session_factory() as session:  # type: ignore[operator]
-                position_id = open_position_from_candidate(
-                    session,
-                    ranked[choice],
-                    product,
-                    chain.underlying_price,
-                    playbook,
-                    contracts,
-                    thesis,
+                position_id = open_position_from_row(
+                    session, view.rows[choice], view.spot, playbook, contracts, thesis
                 )
             st.success(f"Opened position #{position_id}.")

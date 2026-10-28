@@ -11,9 +11,12 @@ from typing import Literal
 from calscan.domain import surface
 from calscan.domain.greeks import CalendarGreeks, calendar_greeks, weighted_vega
 from calscan.domain.models import Expiry, OptionContract, Side
-from calscan.domain.sigma import skew_delta_adjust, strike_from_delta
+from calscan.domain.sigma import d_from_strike, skew_delta_adjust, strike_from_delta
 from calscan.domain.termstructure import fwd_var, fwd_vol
 from calscan.settings import ExpirySelectionConfig, GatesConfig, StrikesConfig
+
+# The `candidates` table stores weighted vega at exactly these alphas (build plan §4 columns).
+ROW_WVEGA_ALPHAS = {"wvega_035": 0.35, "wvega_050": 0.50, "wvega_070": 0.70}
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,8 +62,7 @@ class Candidate:
     ratio: float
     fwd_vol: float
     debit_mid: float
-    greeks: CalendarGreeks
-    wvega: dict[float, float]  # stress alpha -> weighted vega (per 1 contract)
+    greeks: CalendarGreeks  # per 1 contract (× multiplier)
     gates: Gates
     soft_score: int
 
@@ -202,7 +204,6 @@ def build_candidates(
     expiry_cfg: ExpirySelectionConfig,
     strikes_cfg: StrikesConfig,
     gates_cfg: GatesConfig,
-    wvega_alphas: Sequence[float],
     stress_alpha: float,
     rv10: float,
     nav: float,
@@ -261,12 +262,10 @@ def build_candidates(
                 fv = fwd_vol(front.iv, t1, back.iv, t2)
                 fv_var = fwd_var(front.iv, t1, back.iv, t2)
                 greeks = calendar_greeks(front, back, multiplier, contracts=1, spot=spot)
-                wvega = {
-                    alpha: weighted_vega(front.vega, back.vega, t1, t2, alpha)  # type: ignore[arg-type]
-                    for alpha in wvega_alphas
-                }
+                # same per-contract units as greeks.raw_vega, so the soft-score budget check
+                # below compares like with like
                 weighted_vega_worst_case = weighted_vega(
-                    front.vega, back.vega, t1, t2, stress_alpha  # type: ignore[arg-type]
+                    front.vega, back.vega, t1, t2, stress_alpha, multiplier  # type: ignore[arg-type]
                 )
 
                 gates = evaluate_gates(
@@ -303,13 +302,52 @@ def build_candidates(
                         fwd_vol=fv,
                         debit_mid=debit,
                         greeks=greeks,
-                        wvega=wvega,
                         gates=gates,
                         soft_score=score,
                     )
                 )
 
     return candidates
+
+
+def to_row(
+    c: Candidate, *, rank: int, playbook: str, spot: float, multiplier: int
+) -> dict[str, object]:
+    """Flat record matching the `candidates` table — what the job stores and the pages show."""
+    t1, t2 = c.front.dte / 365, c.back.dte / 365
+    wvega = {
+        column: weighted_vega(c.front.vega, c.back.vega, t1, t2, alpha, multiplier)  # type: ignore[arg-type]
+        for column, alpha in ROW_WVEGA_ALPHAS.items()
+    }
+    return {
+        "product": c.product,
+        "side": c.side,
+        "strike": c.strike,
+        "front_expiry": c.front.expiry,
+        "back_expiry": c.back.expiry,
+        "dte1": c.front.dte,
+        "dte2": c.back.dte,
+        "ratio": c.ratio,
+        "iv1": c.front.iv,
+        "iv2": c.back.iv,
+        "fwd_vol": None if math.isnan(c.fwd_vol) else c.fwd_vol,
+        "debit_mid": c.debit_mid,
+        "spread_width_pct": max(spread_width_pct(c.front), spread_width_pct(c.back)),
+        "oi1": c.front.open_interest,
+        "oi2": c.back.open_interest,
+        "net_delta": c.greeks.net_delta,
+        "net_gamma": c.greeks.net_gamma,
+        "net_theta": c.greeks.net_theta,
+        "raw_vega": c.greeks.raw_vega,
+        **wvega,
+        "daily_breakeven_pts": c.greeks.daily_breakeven_pts,
+        "d_sigma": d_from_strike(c.strike, spot, c.front.iv, c.front.dte),  # type: ignore[arg-type]
+        "delta_at_strike": c.front.delta,
+        "gates_passed": c.gates.as_dict(),
+        "soft_score": c.soft_score,
+        "rank": rank,
+        "playbook": playbook,
+    }
 
 
 def rank_candidates(

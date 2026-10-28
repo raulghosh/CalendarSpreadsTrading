@@ -57,9 +57,17 @@ scenario_grid:
 
 schedule:
   run_times_et: ["09:45", "12:30", "15:30"]
+  stale_after_minutes: 20   # Home flags the snapshot stale this long after a missed slot
+
+snapshot:
+  max_dte: 120                   # ATM curve depth per product (§7)
+  atm_iv_sanity: [0.02, 1.5]     # reject a whole chain if any ATM IV lands outside — catches
+                                 # price-unit slips before storing. 1.5 clears any real crash
+                                 # (record VIX close 82.7, Mar 2020); a 100x price slip reads ~1.8
 
 nav: 100000   # for sizing display only
 
 alerts:
   enabled: false
-  channel: none   # none | email | pushover | slack
+  channel: none   # none | slack  (email/pushover not implemented — the job says so if chosen)
+  min_candidate_score: 4   # alert on new tradeable candidates at or above this soft score (§7)

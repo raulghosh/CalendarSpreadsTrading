@@ -74,7 +74,6 @@ def _build_for(product: str, chain: Chain, rv10: float = 0.10) -> list[Candidate
         expiry_cfg=CFG.expiry_selection,
         strikes_cfg=CFG.strikes,
         gates_cfg=CFG.gates,
-        wvega_alphas=[CFG.vol_shock_alpha.baseline, *CFG.vol_shock_alpha.stress_cases],
         stress_alpha=max(CFG.vol_shock_alpha.stress_cases),
         rv10=rv10,
         nav=CFG.nav,
